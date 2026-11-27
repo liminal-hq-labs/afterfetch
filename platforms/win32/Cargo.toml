@@ -1,0 +1,46 @@
+# The Win32 shell for afterfetch: a console program with no C runtime, built for a Pentium. Its own workspace, so the build-std flags
+# and the custom target never reach the host build.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+[workspace]
+resolver = "3"
+members = ["."]
+
+[package]
+name = "afterfetch-win32"
+description = "Afterfetch for Windows 95 and later and ReactOS: a no-C-runtime console program over the Win32 API"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0 OR MIT"
+rust-version = "1.98.0"
+repository = "https://github.com/liminal-hq-labs/afterfetch"
+publish = false
+
+[lib]
+name = "afterfetch_win32"
+path = "src/lib.rs"
+
+[[bin]]
+name = "afterfetch"
+path = "src/main.rs"
+test = false
+bench = false
+
+[dependencies]
+afterfetch-core = { path = "../../crates/afterfetch-core" }
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+
+[profile.release]
+panic = "abort"
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+debug = 0
