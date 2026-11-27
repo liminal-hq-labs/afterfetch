@@ -135,8 +135,8 @@ Half-block cells, with *U* the upper pixel and *L* the lower:
 | `linux` | 15 | 3 + 92 | 3 + 85 | 198 |
 | `freebsd` | 13 | 3 + 79 | 3 + 81 | 179 |
 | `macos` | 16 | 3 + 89 | 3 + 121 | 232 |
-| `desk` | 14 | 3 + 157 | 3 + 154 | 331 |
-| All eight | | | | 1,963 |
+| `desk` | 18 | 3 + 165 | 3 + 205 | 394 |
+| All eight | | | | 2,026 |
 
 The ASCII form usually costs more than the picture: text has more distinct runs than stepped bands. `make art` prints each blob's size as it writes it, and `art/scripts/review_sheet.py` prints the same figures as estimates while a master is being drawn.
 

@@ -7,7 +7,7 @@ What `afterfetch` prints, how it is asked, and what each platform build promises
 Nothing is released. Every part may change between commits. A part marked **planned** is specified here but not implemented yet.
 
 - **Core** (`afterfetch-core`: arguments, colour depth, facts, layout, JSON): in progress; the command line, facts, layout, depth and JSON below are implemented and host-tested, except where marked planned. The decoder for the generated logos is in progress.
-- **Art** (`afterfetch-art`, the eight logos): all eight masters and ASCII forms are drawn and their blobs generated (1,963 bytes together, §7). Until the core's logo decoder lands, every logo name draws the `win32` ASCII picture (AF-D32). `umber` and `soot`, used only by `desk`, are provisional until the owner reviews that logo (AF-D42).
+- **Art** (`afterfetch-art`, the eight logos): all eight masters and ASCII forms are drawn and their blobs generated (2,026 bytes together, §7). Until the core's logo decoder lands, every logo name draws the `win32` ASCII picture (AF-D32). `umber` and `soot`, used only by `desk`, are provisional until the owner reviews that logo (AF-D42).
 - **Platforms**: Linux x86_64 and i586 build and pass their local checks (§13); the Win32 port is in progress; every other target is not started. The order and the go/no-go checkpoints are in §13.
 
 ## 1 · Purpose and scope
@@ -202,7 +202,7 @@ All eight are drawn; `docs/art.md` describes each one.
 | `linux` | Linux | Night: the sun set onto a shell-prompt horizon ending in a block cursor | 36 × 12 (36 × 12) | 198 B |
 | `freebsd` | FreeBSD | Last light: a deeper ember sun behind a low ridge | 36 × 12 (36 × 12) | 179 B |
 | `macos` | macOS | Golden hour: a soft glass sun with a still-water reflection | 36 × 12 (36 × 12) | 232 B |
-| `desk` | Desk | After dark: the sun wearing Desk's stepped halo on the Void, over Desk's stepped horizon, in Desk's 16 colours | 36 × 12 (36 × 12) | 331 B |
+| `desk` | Desk | After dark: the banded sun wearing Desk's stepped halo on the Void, over Desk's stepped horizon, in Desk's 16 colours | 36 × 12 (36 × 12) | 394 B |
 
 - `--logo list` prints these names, one per line, in this order: `afterglow`, `dos`, `win16`, `win32`, `linux`, `freebsd`, `macos`, `desk`. Every binary carries every logo (AF-D10), so `--logo` works everywhere.
 - **Size** (AF-D41). Every logo's picture is 36 × 24 pixels, 36 columns × 12 rows of half-block cells, and its ASCII form is at most 36 × 12. The `win32` ASCII form is the single exception: it keeps its existing 40 columns so the ReactOS output stays byte for byte the same. All blobs together are at most 6 KiB (§11).
@@ -257,7 +257,7 @@ Every release binary must fit its budget; `scripts/check-sizes.sh` reads `sizes.
 | DOS `AFETCH.EXE` | 64 KiB, CWSDPMI stub included |
 | Windows 3.1 `AFETCHW.EXE` | 24 KiB file; code segment `MAIN` 20,000 bytes; DGROUP 16 KiB |
 | Desk `AFETCH.DMD` | 16 KiB (the later window version 24 KiB) |
-| All logo blobs together | 6 KiB (6,144 bytes) and 700 bytes per blob, enforced by the art generator; 1,963 bytes today. 7 KiB is the ceiling if the budget ever has to grow (AF-D40) |
+| All logo blobs together | 6 KiB (6,144 bytes) and 700 bytes per blob, enforced by the art generator; 2,026 bytes today. 7 KiB is the ceiling if the budget ever has to grow (AF-D40) |
 
 Other limits: a fact value is at most 64 bytes, a user or host name at most 32; a logo at most 36 × 12 cells, its ASCII form at most 36 × 12 (`win32`'s 40 × 12, AF-D41); the DOS floor is a 386 with DPMI (AF-D16), the 32-bit x86 floor elsewhere is a Pentium without SSE2 (AF-D19), Desk's is a 486, and Windows 3.1's is a 386 in enhanced mode.
 

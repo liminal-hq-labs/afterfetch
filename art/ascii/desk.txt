@@ -1,19 +1,19 @@
-
-
-    .
-    s
-        .------------------.   .
-        dddddddddddddddddddd   s
-        |.----------------.|
-        duuuuuuuuuuuuuuuuuud
-        ||.--------------.||
-        duooooooooooooooooud
-        ||| .:########:. |||
-        duo oooooooooooo oud
-        ||| :##########: |||
-        duo oooooooooooo oud
-        ||| ############ |||
-        duo oooooooooooo oud
+    .  .--------------------.  .
+    s  dddddddddddddddddddddd  s
+       |.------------------.|
+       duuuuuuuuuuuuuuuuuuuud
+       ||.----------------.||
+       duooooooooooooooooooud
+       |||   .:######:.   |||
+       duo   gggggggggg   oud
+       |||  .:########:.  |||
+       duo  aaaaaaaaaaaa  oud
+       ||| :############: |||
+       duo oooooooooooooo oud
+       ||| :############: |||
+       duo hhhhhhhhhhhhhh oud
+       ||| ############## |||
+       duo cccccccccccccc oud
  ----------------------------------
  rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
  ==================================

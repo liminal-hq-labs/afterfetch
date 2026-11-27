@@ -136,4 +136,4 @@ width = 36
 height = 24
 ascii-width = 36
 ascii-rows = 12
-tones = ["orange", "umber", "soot", "rose", "slate"]
+tones = ["gold", "amber", "orange", "peach", "coral", "umber", "soot", "rose", "slate"]

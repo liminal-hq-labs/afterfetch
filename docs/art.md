@@ -59,7 +59,7 @@ The logos walk through one day, so each system gets a light of its own and the s
 | `win32` | Windows 95 to 11, ReactOS | dusk | the sun over water, ripples fading from lilac to slate |
 | `freebsd` | FreeBSD | last light | a deep ember sun behind a low ridge |
 | `linux` | Linux | night | the sun set onto a shell-prompt horizon under a violet, starry sky |
-| `desk` | Desk OS | after dark | the sun wearing Desk's stepped halo on the Void, over its stepped horizon |
+| `desk` | Desk OS | after dark | the banded sun wearing Desk's stepped halo on the Void, over its stepped horizon |
 
 ## Palette
 
@@ -241,16 +241,17 @@ Night. The sun has almost set: only its upper third shows, gold over orange. The
 
 ### `desk`
 
-After dark. The sun on Desk's Void wearing Desk's stepped halo, over Desk's stepped Horizon, drawn only from Desk's 16-colour set (`docs/PALETTE.md` at Desk `4a021a7`): orange is slot 8, umber 9, soot 10, rose 11 and slate 5, and the Void, slot 0, is the transparent sky. The orange disc is half set on the horizon; around it, a one-pixel ring of Void (the window's own dark edge) and then three one-pixel rings in orange, umber and soot. Each ring is the shape grown by one pixel in all eight directions, the way Desk inflates a window's box for the focused-window halo, so the rings step like Desk's rather than curving smoothly. Under the rose line, Desk's Horizon wallpaper as it is at 16 colours: three flat bands, orange, umber and soot from the top. Two slate stars as in Desk's hero. At 16 terminal colours umber is slate and soot drops out, so the halo and the bands both fade from orange to grey to nothing; in mono the halo is a bright ring inside a dim one. No wordmark and no window chrome.
+After dark. The family's sun on Desk's Void wearing Desk's stepped halo, over Desk's stepped Horizon. The disc is half set on the horizon and cut into the same five bands as the Afterglow sun, gold, amber, orange, peach and coral from the crown down, so it reads as one of the family; those tones are Afterglow's ramps, which Desk loads at 256 colours (slots 16 to 96 in `docs/PALETTE.md` at Desk `4a021a7`). Everything around it comes from Desk's 16-colour set: orange is slot 8, umber 9, soot 10, rose 11 and slate 5, and the Void, slot 0, is the transparent sky. Around the disc, a one-pixel ring of Void (the window's own dark edge) and then three one-pixel rings in orange, umber and soot. Each ring is the shape grown by one pixel in all eight directions, the way Desk inflates a window's box for the focused-window halo, so the rings step like Desk's rather than curving smoothly. Under the rose line, Desk's Horizon wallpaper as it is at 16 colours: three flat bands, orange, umber and soot from the top. Two slate stars as in Desk's hero. At 16 terminal colours amber and peach become orange, so the disc is a gold crown, an orange body and a coral foot; umber is slate and soot drops out, so the halo and the Horizon fade from orange to grey to nothing. On stock VGA the disc is yellow, brown and light red inside a brown ring, kept apart by the Void ring. In mono the disc is bright over plain inside a bright ring and a dim one. No wordmark and no window chrome.
 
 ```text
-    .
-        .------------------.   .
-        |.----------------.|
-        ||.--------------.||
-        ||| .:########:. |||
-        ||| :##########: |||
-        ||| ############ |||
+    .  .--------------------.  .
+       |.------------------.|
+       ||.----------------.||
+       |||   .:######:.   |||
+       |||  .:########:.  |||
+       ||| :############: |||
+       ||| :############: |||
+       ||| ############## |||
  ----------------------------------
  ==================================
  ==================================
@@ -261,7 +262,7 @@ After dark. The sun on Desk's Void wearing Desk's stepped halo, over Desk's step
 
 `python3 art/scripts/review_sheet.py` renders every drawn master into `~/Documents/Liminal HQ/Afterfetch/renders/`: `<logo>-<depth>.png` at 10 pixels per logo pixel for truecolour, 256, the Dusk console, the Afterglow terminal, stock VGA and mono, each on the background that kind of terminal has; `afterfetch-logos.png`, a sheet of every logo at every depth beside its ASCII form; and `afterfetch-family.png`, the eight side by side in the order of the day at truecolour, Dusk 16, stock VGA and mono, with their ASCII forms. It runs the checks below that a script can make, prints each logo's estimated `.afl` size and fails on any breach or a blob over budget. The cell-accurate previews and the blobs come from the generator, `art/scripts/afterfetch_art.py`.
 
-The blobs, as `make art` writes them ([logo-format.md](logo-format.md#size-budget)): `afterglow` 178, `dos` 157, `win16` 360, `win32` 328, `linux` 198, `freebsd` 179, `macos` 232 and `desk` 331 bytes, 1,963 in all against the 6,144-byte (6 KiB) budget (AF-D40).
+The blobs, as `make art` writes them ([logo-format.md](logo-format.md#size-budget)): `afterglow` 178, `dos` 157, `win16` 360, `win32` 328, `linux` 198, `freebsd` 179, `macos` 232 and `desk` 394 bytes, 2,026 in all against the 6,144-byte (6 KiB) budget (AF-D40).
 
 Before a master lands, check that:
 
