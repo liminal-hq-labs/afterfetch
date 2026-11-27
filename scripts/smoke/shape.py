@@ -202,7 +202,11 @@ def check_plain(command, labels_path, golden_path=None):
 			check_golden(command, golden_path)
 	else:
 		desktop = run(command + ["--json"], {"XDG_CURRENT_DESKTOP": "Sunset"})
-		expect(json.loads(desktop.stdout)["desktop"] == "Sunset", "XDG_CURRENT_DESKTOP is not reported")
+		if values["target"].startswith("macos-"):
+			# macOS has no desktop environment to name and does not read XDG_CURRENT_DESKTOP (AF-D56).
+			expect(json.loads(desktop.stdout)["desktop"] is None, "macOS reported a desktop")
+		else:
+			expect(json.loads(desktop.stdout)["desktop"] == "Sunset", "XDG_CURRENT_DESKTOP is not reported")
 		quiet = run(command + ["--json"], {"XDG_CURRENT_DESKTOP": ""})
 		expect(json.loads(quiet.stdout)["desktop"] is None, "an empty XDG_CURRENT_DESKTOP gave a row")
 

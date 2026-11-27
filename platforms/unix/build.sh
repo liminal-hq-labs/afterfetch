@@ -33,8 +33,9 @@ case "$target" in
 		-C link-arg=-no_uuid
 	)
 	# rustc adds the minimum system version itself (10.12 on x86-64, 11.0 on ARM64) and `-dead_strip`. It looks for an SDK to name in the
-	# binary; there is none, so it is pointed at an empty directory instead of failing to find Xcode.
-	export SDKROOT="$here/macos/no-sdk"
+	# binary; there is none, so a rustc wrapper points it at an empty directory instead of failing to find Xcode. The wrapper leaves build
+	# scripts alone: they are host programs and link with the runner's real SDK.
+	export RUSTC_WRAPPER="$here/macos/rustc-wrapper.sh"
 	;;
 *)
 	flags=("${common[@]}"
@@ -84,7 +85,7 @@ CARGO_ENCODED_RUSTFLAGS="${CARGO_ENCODED_RUSTFLAGS%$'\x1f'}"
 
 cd "$root"
 case "$action" in
-build) cargo build --release --locked "${cargo_extra[@]}" -p afterfetch-unix --target "$target" ;;
-clippy) cargo clippy --release --locked "${cargo_extra[@]}" -p afterfetch-unix --target "$target" -- -D warnings ;;
+build) cargo build --release --locked ${cargo_extra[@]+"${cargo_extra[@]}"} -p afterfetch-unix --target "$target" ;;
+clippy) cargo clippy --release --locked ${cargo_extra[@]+"${cargo_extra[@]}"} -p afterfetch-unix --target "$target" -- -D warnings ;;
 *) echo "unknown action: $action" >&2; exit 2 ;;
 esac
