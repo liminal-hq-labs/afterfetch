@@ -80,6 +80,9 @@ pub trait Terminal {
 	fn set_style(&mut self, style: Style);
 	/// Restores the terminal's own style, then ends the line.
 	fn end_line(&mut self);
+	/// Tells the terminal the depth the run settled on, before anything is drawn. A terminal that encodes styles itself needs it, because
+	/// the depth is decided inside `run` from the options and the environment; a console shell ignores it.
+	fn set_depth(&mut self, _depth: Depth) {}
 	/// Writes one line to the error stream, line end included. The default writes it to the output; a shell with a separate error
 	/// stream overrides this.
 	fn write_error_line(&mut self, bytes: &[u8]) {
@@ -161,6 +164,10 @@ impl<'a, S: ByteSink> AnsiTerminal<'a, S> {
 impl<S: ByteSink> Terminal for AnsiTerminal<'_, S> {
 	fn write(&mut self, bytes: &[u8]) {
 		self.sink.write_bytes(bytes);
+	}
+
+	fn set_depth(&mut self, depth: Depth) {
+		self.depth = depth;
 	}
 
 	fn set_style(&mut self, style: Style) {
@@ -267,6 +274,19 @@ mod tests {
 			"<ESC>[0m<ESC>[2mx<ESC>[0m\n"
 		);
 		assert_eq!(paint_one(Depth::Mono, Style::text(Tone::Gold)), "<ESC>[0mx<ESC>[0m\n");
+	}
+
+	#[test]
+	fn the_depth_can_be_set_after_construction() {
+		let mut collect = Collect::default();
+		{
+			let mut terminal = AnsiTerminal::new(&mut collect, Depth::None, b"\n");
+			terminal.set_depth(Depth::Ansi256);
+			terminal.set_style(Style::text(Tone::Gold));
+			terminal.write(b"x");
+			terminal.end_line();
+		}
+		assert_eq!(visible(&collect.0), "<ESC>[0m<ESC>[38;5;222mx<ESC>[0m\n");
 	}
 
 	#[test]

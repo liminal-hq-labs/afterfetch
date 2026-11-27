@@ -182,6 +182,7 @@ pub fn run<'a>(platform: &mut impl Platform, out: &mut impl Terminal, argv: impl
 	};
 	let logo = (!options.no_logo).then(|| logo_name.ascii());
 	let columns = if info.columns == 0 { 80 } else { info.columns };
+	out.set_depth(depth);
 	out.set_style(Style::PLAIN);
 	layout::render(out, &facts, Layout { logo, depth, columns });
 	EXIT_OK
