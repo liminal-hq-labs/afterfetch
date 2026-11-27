@@ -20,7 +20,6 @@ flags=(
 	-C relocation-model=static
 	-C target-feature=+crt-static
 	-C force-unwind-tables=no
-	-C link-self-contained=no
 	-C link-arg=-static
 	-C link-arg=--gc-sections
 	-C link-arg=--build-id=none
@@ -29,10 +28,20 @@ flags=(
 	-C link-arg=--entry=_start
 	-C link-arg=--strip-all
 	-C link-arg=--no-eh-frame-hdr
-	-C "link-arg=-T$here/link.ld"
 	"--remap-path-prefix=$root=/afterfetch"
 	"--remap-path-prefix=${CARGO_HOME:-$HOME/.cargo}=/cargo"
 )
+
+# FreeBSD's kernel will not map two segments that share a page, so it has its own layout (AF-D55).
+case "$target" in
+*-freebsd) flags+=("-C" "link-arg=-T$here/link-freebsd.ld") ;;
+*) flags+=("-C" "link-arg=-T$here/link.ld") ;;
+esac
+
+# Linux's musl targets would link their own start files; the flag says not to. The FreeBSD targets have none, and reject the flag.
+case "$target" in
+*-linux-*) flags+=(-C link-self-contained=no) ;;
+esac
 
 # 32-bit Arm builds use Thumb code, which is denser than Arm code and keeps the program inside its size budget (AF-D47).
 case "$target" in

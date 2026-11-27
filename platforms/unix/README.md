@@ -1,6 +1,6 @@
 # Afterfetch for Unix
 
-A static program with no C library, built from raw system calls. Linux x86_64, i586, ARM64 (`aarch64`), 32-bit Arm (`armv7`, `armv6`), MIPS (`mips`, `mipsel`), RISC-V 64 (`riscv64`) and PowerPC 64 little-endian (`ppc64le`) build today; the layout leaves room for the other architectures, FreeBSD and macOS.
+A static program with no C library, built from raw system calls. FreeBSD x86_64 and ARM64 (`os/freebsd.rs`, `link-freebsd.ld`, `syscalls-freebsd.allow`, the `arch/freebsd_*.rs` stubs) build beside Linux. Linux x86_64, i586, ARM64 (`aarch64`), 32-bit Arm (`armv7`, `armv6`), MIPS (`mips`, `mipsel`), RISC-V 64 (`riscv64`) and PowerPC 64 little-endian (`ppc64le`) build today; the layout leaves room for the other architectures and macOS.
 
 ## Build and check
 
@@ -11,7 +11,7 @@ bash scripts/smoke/linux-native.sh                   # shape, --json and the col
 bash scripts/repro-unix.sh                           # two builds in two directories, compared byte for byte
 ```
 
-`make check` runs all of them. `build.sh` holds every compiler and linker flag in one place, because `RUSTFLAGS` set per call is the only way to remap the source path so builds in different directories match. The crate is empty on any target that is not Linux with musl (`build.rs` sets the `raw_linux` cfg), so `cargo check --workspace` works on the host.
+`make check` runs all of them. `build.sh` holds every compiler and linker flag in one place, because `RUSTFLAGS` set per call is the only way to remap the source path so builds in different directories match. The crate is empty on any target that is not Linux with musl or FreeBSD (`build.rs` sets `raw_linux` or `raw_freebsd`, and `raw_unix` for either), so `cargo check --workspace` works on the host.
 
 ## Layout
 

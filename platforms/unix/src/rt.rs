@@ -7,7 +7,7 @@
 use core::ffi::c_void;
 use core::ptr;
 
-use crate::os::linux;
+use crate::os::system;
 
 /// The command-line arguments after the program's own name, as byte strings.
 pub struct Args {
@@ -54,13 +54,13 @@ pub extern "C" fn start(stack: *const usize) -> ! {
 		let argv = stack.add(1).cast::<*const u8>();
 		(Args { next: argv.add(1) }, argv.add(argc + 1))
 	};
-	let code = crate::os::linux::main(args, environment);
-	linux::exit(code)
+	let code = crate::os::system::main(args, environment);
+	system::exit(code)
 }
 
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo<'_>) -> ! {
-	linux::exit(afterfetch_core::run::EXIT_CRASH)
+	system::exit(afterfetch_core::run::EXIT_CRASH)
 }
 
 // The compiler emits calls to these for copies and fills, and the target has no C library to provide them. Volatile access keeps the

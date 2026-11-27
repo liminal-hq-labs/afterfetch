@@ -1,0 +1,14 @@
+# The system calls the FreeBSD build makes, one per line: the names of the `Sys` enum in `src/os/freebsd.rs`, kept equal by `check.sh`.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+ClockGettime
+Close
+Exit
+Getuid
+Ioctl
+Kenv
+OpenAt
+Read
+Sysctl
+Write

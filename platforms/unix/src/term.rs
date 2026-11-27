@@ -6,7 +6,7 @@
 
 use afterfetch_core::{AnsiTerminal, ByteSink, Depth, Style, Terminal};
 
-use crate::os::linux;
+use crate::os::system;
 
 /// Standard output, buffered so a full picture is a few `write` calls and not one per escape sequence.
 pub struct FdSink {
@@ -28,7 +28,7 @@ impl FdSink {
 
 	/// Writes out what is buffered. A failure is remembered and reported by `finish`.
 	fn flush(&mut self) {
-		if self.length > 0 && !linux::write_all(self.fd, &self.buffer[..self.length]) {
+		if self.length > 0 && !system::write_all(self.fd, &self.buffer[..self.length]) {
 			self.failed = true;
 		}
 		self.length = 0;
@@ -89,7 +89,7 @@ impl Terminal for Out<'_> {
 
 	fn write_error_line(&mut self, bytes: &[u8]) {
 		// Failing to report an error has nowhere further to go.
-		let _ = linux::write_all(2, bytes) && linux::write_all(2, b"\n");
+		let _ = system::write_all(2, bytes) && system::write_all(2, b"\n");
 	}
 }
 

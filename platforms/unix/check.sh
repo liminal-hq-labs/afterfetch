@@ -14,9 +14,14 @@ binary="${2:-$root/target/$target/release/afterfetch}"
 budget=32768
 data=""
 abi_flags=""
+osabi=""
+source_file="linux"
+allow_file="syscalls.allow"
 
 case "$target" in
 x86_64-unknown-linux-musl) class="ELF64" machine="Advanced Micro Devices X86-64" ;;
+x86_64-unknown-freebsd) class="ELF64" machine="Advanced Micro Devices X86-64" osabi="FreeBSD" ;; # AF-D55: 32 KiB like Linux
+aarch64-unknown-freebsd) class="ELF64" machine="AArch64" osabi="FreeBSD" ;;
 aarch64-unknown-linux-musl) class="ELF64" machine="AArch64" ;;
 armv7-unknown-linux-musleabihf | arm-unknown-linux-musleabihf) class="ELF32" machine="ARM" ;;
 i586-unknown-linux-musl) class="ELF32" machine="Intel 80386" ;;
@@ -25,6 +30,13 @@ powerpc64le-unknown-linux-musl) class="ELF64" machine="PowerPC64" data="little e
 mips-unknown-linux-musl) class="ELF32" machine="MIPS R3000" budget=45056 data="big endian" ;; # AF-D22: o32 code is wider than Thumb
 mipsel-unknown-linux-musl) class="ELF32" machine="MIPS R3000" budget=45056 data="little endian" ;;
 *) echo "check.sh: no expectations for $target" >&2; exit 2 ;;
+esac
+
+case "$target" in
+*-freebsd)
+	source_file="freebsd"
+	allow_file="syscalls-freebsd.allow"
+	;;
 esac
 
 fail() {
@@ -37,6 +49,7 @@ header="$(llvm-readelf -h "$binary")"
 grep -q "Class:.*$class" <<<"$header" || fail "not $class"
 grep -q "Machine:.*$machine" <<<"$header" || fail "not $machine"
 [ -z "$data" ] || grep -q "Data:.*$data" <<<"$header" || fail "not $data"
+[ -z "$osabi" ] || grep -q "OS/ABI:.*$osabi" <<<"$header" || fail "not a $osabi binary (EI_OSABI)"
 [ -z "$abi_flags" ] || grep -qi "Flags:.*$abi_flags" <<<"$header" || fail "not ELFv2 (e_flags 2)"
 grep -q "Type:.*EXEC" <<<"$header" || fail "not a fixed-address executable (relocation-model=static)"
 ! llvm-readelf -l "$binary" | grep -q 'INTERP' || fail "has a PT_INTERP"
@@ -47,8 +60,8 @@ dynamic="$(llvm-readelf -d "$binary" 2>&1 || true)"
 size="$(stat -c %s "$binary")"
 [ "$size" -le "$budget" ] || fail "$size bytes is over the $budget byte budget"
 
-source_calls="$(sed -n '/^enum Sys {/,/^}/p' "$here/src/os/linux.rs" | grep -oE '^\s+[A-Z][A-Za-z]+,' | tr -d '\t ,' | sort)"
-allowed="$(grep -v '^#' "$here/syscalls.allow" | sort)"
+source_calls="$(sed -n '/^enum Sys {/,/^}/p' "$here/src/os/$source_file.rs" | grep -oE '^\s+[A-Z][A-Za-z]+,' | tr -d '\t ,' | sort)"
+allowed="$(grep -v '^#' "$here/$allow_file" | sort)"
 [ "$source_calls" = "$allowed" ] || fail "the Sys enum and syscalls.allow differ"
 
 echo "ok $target: $size bytes of $budget, static, no PT_INTERP, no DT_NEEDED"

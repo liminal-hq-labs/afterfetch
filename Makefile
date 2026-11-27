@@ -5,15 +5,15 @@
 
 export CARGO_BUILD_JOBS ?= 4
 
-.PHONY: check check-fast headers fmt clippy test deny art art-check test-art clippy-unix build-unix check-unix smoke-linux-native repro-unix
+.PHONY: check check-fast headers fmt clippy test deny art art-check test-art clippy-unix build-unix check-unix smoke-linux-native smoke-freebsd repro-unix
 .PHONY: preview sheet
 .PHONY: fmt-win32 clippy-win32 test-win32 build-win32 check-win32 smoke-wine repro-win32
 
-UNIX_TARGETS := x86_64-unknown-linux-musl i586-unknown-linux-musl aarch64-unknown-linux-musl armv7-unknown-linux-musleabihf arm-unknown-linux-musleabihf mips-unknown-linux-musl mipsel-unknown-linux-musl riscv64gc-unknown-linux-musl powerpc64le-unknown-linux-musl
+UNIX_TARGETS := x86_64-unknown-linux-musl i586-unknown-linux-musl aarch64-unknown-linux-musl armv7-unknown-linux-musleabihf arm-unknown-linux-musleabihf mips-unknown-linux-musl mipsel-unknown-linux-musl riscv64gc-unknown-linux-musl powerpc64le-unknown-linux-musl x86_64-unknown-freebsd aarch64-unknown-freebsd
 WIN32_ARCHES := i586 x86_64 aarch64
 
 # Every later work package adds its builds, size checks and smokes to `check`.
-check: check-fast deny clippy-unix build-unix check-unix smoke-linux-native repro-unix fmt-win32 clippy-win32 test-win32 build-win32 check-win32 smoke-wine repro-win32
+check: check-fast deny clippy-unix build-unix check-unix smoke-linux-native smoke-freebsd repro-unix fmt-win32 clippy-win32 test-win32 build-win32 check-win32 smoke-wine repro-win32
 
 check-fast: headers fmt clippy test test-art art-check
 
@@ -55,6 +55,10 @@ check-unix: build-unix
 
 smoke-linux-native: build-unix
 	bash scripts/smoke/linux-native.sh
+
+# FreeBSD (AF-D6, AF-D55): the x86_64 build runs inside the official VM image under QEMU; skipped, and said so, until `scripts/freebsd-vm.sh fetch` has run.
+smoke-freebsd: build-unix
+	@if [ -f "$$HOME/.cache/afterfetch/freebsd/FreeBSD-15.1-RELEASE-amd64-BASIC-CLOUDINIT-ufs.qcow2" ]; then bash scripts/freebsd-vm.sh run; else echo "SKIP smoke-freebsd: no VM image (run scripts/freebsd-vm.sh fetch); unverified"; fi
 
 repro-unix:
 	bash scripts/repro-unix.sh $(UNIX_TARGETS)
