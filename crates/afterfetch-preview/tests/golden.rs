@@ -214,3 +214,48 @@ fn bad_arguments_are_errors_not_panics() {
 	let wrong_arch = cli::parse(&args(&["--system", "dos", "--arch", "arm64"])).unwrap();
 	assert!(cli::execute(&wrong_arch).is_err());
 }
+
+#[test]
+fn json_carries_the_target_the_architecture_and_the_raw_numbers() {
+	let linux = System::find("linux").unwrap();
+	for (arch, target) in [
+		("x86_64", "linux-x86_64"),
+		("i586", "linux-i586"),
+		("armv7l", "linux-armv7"),
+		("riscv64", "linux-riscv64"),
+	] {
+		let json = afterfetch_preview::render::render_json(&Request {
+			arch,
+			..Request::new(linux)
+		});
+		assert!(json.contains(&format!("\"target\":\"{target}\"")), "{json}");
+		assert!(
+			json.contains("\"schema\":1") && json.contains("\"uptime_seconds\":") && json.contains("\"memory_total_bytes\":"),
+			"{json}"
+		);
+	}
+	let windows = afterfetch_preview::render::render_json(&Request::new(System::find("win32").unwrap()));
+	assert!(
+		windows.contains("\"target\":\"windows-x86_64\"") && windows.contains("\"arch\":\"x86_64\""),
+		"{windows}"
+	);
+}
+
+#[test]
+fn the_title_rule_takes_the_architecture_accent() {
+	let linux = System::find("linux").unwrap();
+	let rule = |arch| {
+		let bytes = render_ansi(&Request {
+			arch,
+			depth: DepthChoice::TrueColour,
+			..Request::new(linux)
+		});
+		let text = String::from_utf8(bytes).unwrap();
+		let dashes = text.find("-----").unwrap();
+		let start = text[..dashes].rfind("\u{1b}[38;2;").unwrap();
+		text[start..dashes].split('m').next().unwrap().to_string()
+	};
+	assert_ne!(rule("x86_64"), rule("aarch64"));
+	assert_ne!(rule("aarch64"), rule("riscv64"));
+	assert_ne!(rule("riscv64"), rule("ppc64le"));
+}

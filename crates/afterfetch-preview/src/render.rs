@@ -119,12 +119,20 @@ struct Preview {
 	sample: Sample,
 	info: TerminalInfo,
 	platform: &'static str,
+	target: String,
 }
 
 impl Platform for Preview {
 	fn facts(&mut self, facts: &mut Facts) {
 		facts.user.push(self.sample.user.as_bytes());
 		facts.host.push(self.sample.host.as_bytes());
+		facts.arch.push(self.sample.arch.as_bytes());
+		if let Some(seconds) = self.sample.uptime_seconds {
+			facts.set_uptime(seconds);
+		}
+		if let Some((available, total)) = self.sample.memory {
+			facts.set_memory(available, total);
+		}
 		for (key, value) in &self.sample.rows {
 			facts.row_mut(*key).push(value.as_bytes());
 		}
@@ -143,7 +151,7 @@ impl Platform for Preview {
 	}
 
 	fn target_name(&self, out: &mut Buf<32>) {
-		out.push(self.platform.as_bytes());
+		out.push(self.target.as_bytes());
 	}
 }
 
@@ -157,6 +165,7 @@ fn preview_for(request: &Request) -> Preview {
 			utf8: request.utf8(),
 		},
 		platform: request.system.platform,
+		target: request.system.target(request.arch),
 	}
 }
 
@@ -197,6 +206,9 @@ impl<S: ByteSink> Terminal for Console16AsAnsi<'_, S> {
 	}
 	fn end_line(&mut self) {
 		self.0.end_line();
+	}
+	fn flush(&mut self) -> bool {
+		self.0.flush()
 	}
 	fn set_depth(&mut self, depth: Depth) {
 		self.0
