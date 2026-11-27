@@ -8,11 +8,15 @@ A console program for Windows 95 and later and ReactOS, with no C runtime: `no_s
 platforms/win32/build.sh i586            # build-std for a Pentium, rust-lld as lld-link; add `clippy` to lint instead
 platforms/win32/check.sh                 # PE structure, imports, Pentium scan, 24 KiB budget
 bash scripts/smoke/wine.sh               # plain output, --json, the golden logo and the console attributes, under Wine on its own Xvfb
-bash scripts/repro-win32.sh              # two builds in two directories, compared byte for byte
+bash scripts/repro-win32.sh              # three builds in three directories of different depth, compared byte for byte
 (cd platforms/win32 && cargo nextest run --lib --target x86_64-unknown-linux-gnu)    # the host tests
 ```
 
 `make check` runs all of them. This is its own Cargo workspace, because the build-std flags and the custom target must not reach the host build. `build.sh` needs `RUSTC_BOOTSTRAP=1` (it sets it) for `-Zbuild-std`: the prebuilt `core` assumes SSE2, which a Pentium lacks, so `core` is built from source for `i586-win32.json`.
+
+## Reproducibility
+
+The same source and toolchain give the same file in any checkout directory. Cargo hashes a path dependency into its crate metadata (and so into symbol hashes, and the order of the code) as a path relative to the workspace root, but falls back to the absolute path when the dependency sits outside that root. The core and the art crate used to be reached as `../../crates/...`, outside this workspace, so the build changed with the directory it ran in: two of five directories gave one executable and three gave another, differing in code layout and in the `/Brepro` timestamp, which is a hash of the output. `crates` here is a symlink to `../../crates`, so both crates are reached under this workspace's root, and the workspace carries the `[workspace.package]` and `[workspace.lints]` tables that the core inherits (keep them equal to the root `Cargo.toml`'s). `scripts/repro-win32.sh` builds in three directories of different depth and length so that a lucky pair cannot hide a regression.
 
 ## Layout
 

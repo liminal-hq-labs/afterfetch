@@ -57,7 +57,7 @@ smoke-linux-native: build-unix
 repro-unix:
 	bash scripts/repro-unix.sh $(UNIX_TARGETS)
 
-# Win32 (i586): its own workspace, so its formatting, lints and host tests run from its folder. Then the build, the structure, import and
+# Win32 (i586): its own workspace (the shared crates reach it through a symlink, AF-D48), so its formatting, lints and host tests run from its folder. Then the build, the structure, import and
 # Pentium checks with the size budget, the Wine smoke, and reproducibility.
 fmt-win32:
 	cd platforms/win32 && cargo fmt --all -- --check

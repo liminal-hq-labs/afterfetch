@@ -8,6 +8,19 @@
 resolver = "3"
 members = ["."]
 
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0 OR MIT"
+rust-version = "1.98.0"
+repository = "https://github.com/liminal-hq-labs/afterfetch"
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+
 [package]
 name = "afterfetch-win32"
 description = "Afterfetch for Windows 95 and later and ReactOS: a no-C-runtime console program over the Win32 API"
@@ -29,7 +42,7 @@ test = false
 bench = false
 
 [dependencies]
-afterfetch-core = { path = "../../crates/afterfetch-core" }
+afterfetch-core = { path = "crates/afterfetch-core" }
 
 [lints.rust]
 unsafe_op_in_unsafe_fn = "deny"

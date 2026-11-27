@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Builds the Win32 executable twice, in two different directories, and compares the bytes. Usage: repro-win32.sh
+# Builds the Win32 executable in three different directories and compares the bytes. Usage: repro-win32.sh
 #
-# The copies and their build output live in ~/.cache/afterfetch/repro-win32 and are removed when the script ends.
+# The three paths differ in depth and length, because a build that depends on the checkout path can hide behind two lucky ones. The copies and
+# their build output live in ~/.cache/afterfetch/repro-win32 and are removed when the script ends.
 #
 # (c) Copyright 2026 Liminal HQ, Scott Morris
 # SPDX-License-Identifier: Apache-2.0 OR MIT
@@ -14,15 +15,18 @@ rm -rf "$work"
 mkdir -p "$work"
 trap 'rm -rf "$work"' EXIT
 
-for copy in one/afterfetch two/second-place; do
+copies=(one/afterfetch two/second-place three/a/much/deeper/directory/with-a-longer-name)
+for copy in "${copies[@]}"; do
 	mkdir -p "$work/$copy"
-	(cd "$root" && git ls-files --cached --others --exclude-standard -z | xargs -0 -I{} cp --parents {} "$work/$copy/")
+	(cd "$root" && git ls-files --cached --others --exclude-standard -z | xargs -0 -I{} cp -P --parents {} "$work/$copy/")
 	(cd "$work/$copy" && CARGO_TARGET_DIR="$work/$copy/target" bash platforms/win32/build.sh i586 --out "$work/$copy/out" >/dev/null 2>&1)
 done
 
-if cmp -s "$work/one/afterfetch/out/afterfetch.exe" "$work/two/second-place/out/afterfetch.exe"; then
-	echo "ok repro win32 i586: byte-identical across two directories ($(sha256sum <"$work/one/afterfetch/out/afterfetch.exe" | cut -d' ' -f1))"
-else
-	echo "FAIL repro win32 i586: the two builds differ" >&2
-	exit 1
-fi
+first="$work/${copies[0]}/out/afterfetch.exe"
+for copy in "${copies[@]:1}"; do
+	if ! cmp -s "$first" "$work/$copy/out/afterfetch.exe"; then
+		echo "FAIL repro win32 i586: the build in $copy differs from the build in ${copies[0]}" >&2
+		exit 1
+	fi
+done
+echo "ok repro win32 i586: byte-identical across ${#copies[@]} directories ($(sha256sum <"$first" | cut -d' ' -f1))"
