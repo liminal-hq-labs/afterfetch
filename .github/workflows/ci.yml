@@ -1,0 +1,130 @@
+# Placeholder pipeline: one job per check, so the checks list names exactly what passed or failed.
+# There is no remote yet, so `make check` is the gate until the project moves to GitHub. The full
+# matrix (cross builds, smokes, size and structure checks) lands with the CI work package.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  markdown:
+    name: Markdown lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Run markdownlint-cli2
+        uses: DavidAnson/markdownlint-cli2-action@v24
+        with:
+          globs: '**/*.md'
+
+  headers:
+    name: Licence headers
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Check SPDX headers
+        run: bash scripts/check-headers.sh
+
+  # Rust: one job per check in the shared ci-rust image, pinned by digest. No apt-get on the
+  # runner; every tool comes from the image.
+
+  fmt:
+    name: Format
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    container:
+      image: ghcr.io/liminal-hq/ci-rust@sha256:f12097be8cc22eb5145a46bc9f75b38a67fedd5833add4392e11ce85023e64df
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    container:
+      image: ghcr.io/liminal-hq/ci-rust@sha256:f12097be8cc22eb5145a46bc9f75b38a67fedd5833add4392e11ce85023e64df
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Cache Rust build output
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: afterfetch
+
+      - name: Run clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+  test:
+    name: Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    container:
+      image: ghcr.io/liminal-hq/ci-rust@sha256:f12097be8cc22eb5145a46bc9f75b38a67fedd5833add4392e11ce85023e64df
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Cache Rust build output
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: afterfetch
+
+      - name: Run the tests
+        run: cargo nextest run --workspace --locked --no-tests=pass
+
+  deny:
+    name: Licences and sources
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    container:
+      image: ghcr.io/liminal-hq/ci-rust@sha256:f12097be8cc22eb5145a46bc9f75b38a67fedd5833add4392e11ce85023e64df
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Run cargo-deny
+        run: cargo deny check

@@ -1,0 +1,29 @@
+# Workspace for the host-buildable crates. The Win32, DOS and Windows 3.1 shells are their own
+# workspaces, so their build-std flags never reach the host build.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+[workspace]
+resolver = "3"
+members = ["crates/afterfetch-core", "crates/afterfetch-art"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0 OR MIT"
+rust-version = "1.98.0"
+repository = "https://github.com/liminal-hq-labs/afterfetch"
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

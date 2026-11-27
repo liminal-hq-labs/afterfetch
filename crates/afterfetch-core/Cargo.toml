@@ -1,0 +1,17 @@
+# Afterfetch the portable core: arguments, facts, layout and output, with no platform knowledge.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+[package]
+name = "afterfetch-core"
+description = "Afterfetch the portable core: arguments, facts, layout and output, with no platform knowledge"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+
+[lints]
+workspace = true
