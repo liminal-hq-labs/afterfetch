@@ -1,6 +1,6 @@
 # Afterfetch for Unix
 
-A static program with no C library, built from raw system calls. FreeBSD x86_64 and ARM64 (`os/freebsd.rs`, `link-freebsd.ld`, `syscalls-freebsd.allow`, the `arch/freebsd_*.rs` stubs) build beside Linux. Linux x86_64, i586, ARM64 (`aarch64`), 32-bit Arm (`armv7`, `armv6`), MIPS (`mips`, `mipsel`), RISC-V 64 (`riscv64`) and PowerPC 64 little-endian (`ppc64le`) build today; the layout leaves room for the other architectures and macOS.
+A static program with no C library, built from raw system calls. macOS x86_64 and ARM64 (`os/macos.rs`, `macos/libSystem.tbd`; built and structure-checked, never run) and FreeBSD x86_64 and ARM64 (`os/freebsd.rs`, `link-freebsd.ld`, `syscalls-freebsd.allow`, the `arch/freebsd_*.rs` stubs) build beside Linux. Linux x86_64, i586, ARM64 (`aarch64`), 32-bit Arm (`armv7`, `armv6`), MIPS (`mips`, `mipsel`), RISC-V 64 (`riscv64`) and PowerPC 64 little-endian (`ppc64le`) build today; the layout leaves room for the other architectures and macOS.
 
 ## Build and check
 

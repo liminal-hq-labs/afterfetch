@@ -180,8 +180,12 @@ def check_plain(command, labels_path, golden_path=None):
 		quiet = run(command + ["--json"], {"XDG_CURRENT_DESKTOP": ""})
 		expect(json.loads(quiet.stdout)["desktop"] is None, "an empty XDG_CURRENT_DESKTOP gave a row")
 
-		with open("/dev/full", "wb") as full:
-			failed = subprocess.run(command + ["--plain"], stdout=full, stderr=subprocess.DEVNULL, check=False)
+		if os.path.exists("/dev/full"):
+			with open("/dev/full", "wb") as full:
+				failed = subprocess.run(command + ["--plain"], stdout=full, stderr=subprocess.DEVNULL, check=False)
+		else:
+			# macOS and FreeBSD have no /dev/full: a closed standard output is a write that fails.
+			failed = subprocess.run(command + ["--plain"], stderr=subprocess.DEVNULL, preexec_fn=lambda: os.close(1), check=False)
 		expect(failed.returncode == 74, f"output to a full device exited {failed.returncode}, not 74")
 
 		forced = run(command + ["--colour", "truecolour"], {"NO_COLOR": "1"})

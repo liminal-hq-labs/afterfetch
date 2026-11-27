@@ -4,7 +4,6 @@
 // (c) Copyright 2026 Liminal HQ, Scott Morris
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 
-use core::ffi::c_void;
 use core::ptr;
 
 use crate::os::system;
@@ -12,6 +11,20 @@ use crate::os::system;
 /// The command-line arguments after the program's own name, as byte strings.
 pub struct Args {
 	next: *const *const u8,
+}
+
+impl Args {
+	/// The arguments after the program's own name, from the kernel's or the C runtime's `argv` (whose first entry is that name).
+	///
+	/// # Safety
+	/// `argv` must be the null-terminated array of NUL-terminated strings that outlives the run.
+	#[cfg_attr(not(raw_macos), allow(dead_code))]
+	pub unsafe fn after_name(argv: *const *const u8) -> Self {
+		// SAFETY: the array has at least the program's name and the terminating null.
+		Args {
+			next: unsafe { argv.add(1) },
+		}
+	}
 }
 
 impl Iterator for Args {
@@ -47,6 +60,7 @@ pub unsafe fn c_bytes(text: *const u8) -> &'static [u8] {
 }
 
 /// Called by the entry stub with the stack pointer the kernel set: `argc`, then `argv`, a null, then `envp`, a null.
+#[cfg(not(raw_macos))]
 pub extern "C" fn start(stack: *const usize) -> ! {
 	// SAFETY: the kernel lays the stack out as described above.
 	let (args, environment) = unsafe {
@@ -63,83 +77,90 @@ fn panic(_info: &core::panic::PanicInfo<'_>) -> ! {
 	system::exit(afterfetch_core::run::EXIT_CRASH)
 }
 
-// The compiler emits calls to these for copies and fills, and the target has no C library to provide them. Volatile access keeps the
-// optimiser from turning the loops back into calls to themselves.
+// macOS gets these from libSystem, which the stub lists.
+#[cfg(not(raw_macos))]
+mod memory {
+	use core::ffi::c_void;
+	use core::ptr;
 
-/// # Safety
-/// The regions must be valid and must not overlap.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn memcpy(destination: *mut c_void, source: *const c_void, count: usize) -> *mut c_void {
-	let (destination_bytes, source_bytes) = (destination.cast::<u8>(), source.cast::<u8>());
-	let mut at = 0;
-	// SAFETY: the caller guarantees both regions are valid for `count` bytes.
-	unsafe {
-		while at < count {
-			ptr::write_volatile(destination_bytes.add(at), ptr::read_volatile(source_bytes.add(at)));
-			at += 1;
-		}
-	}
-	destination
-}
+	// The compiler emits calls to these for copies and fills, and the target has no C library to provide them. Volatile access keeps the
+	// optimiser from turning the loops back into calls to themselves.
 
-/// # Safety
-/// The regions must be valid; they may overlap.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn memmove(destination: *mut c_void, source: *const c_void, count: usize) -> *mut c_void {
-	let (destination_bytes, source_bytes) = (destination.cast::<u8>(), source.cast::<u8>());
-	// SAFETY: the caller guarantees both regions are valid for `count` bytes.
-	unsafe {
-		if destination_bytes.cast_const() <= source_bytes || destination_bytes.cast_const() >= source_bytes.add(count) {
-			return memcpy(destination, source, count);
-		}
-		let mut at = count;
-		while at > 0 {
-			at -= 1;
-			ptr::write_volatile(destination_bytes.add(at), ptr::read_volatile(source_bytes.add(at)));
-		}
-	}
-	destination
-}
-
-/// # Safety
-/// The region must be valid for `count` bytes.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn memset(destination: *mut c_void, value: i32, count: usize) -> *mut c_void {
-	let destination_bytes = destination.cast::<u8>();
-	let mut at = 0;
-	// SAFETY: the caller guarantees the region is valid for `count` bytes.
-	unsafe {
-		while at < count {
-			ptr::write_volatile(destination_bytes.add(at), value as u8);
-			at += 1;
-		}
-	}
-	destination
-}
-
-/// # Safety
-/// Both regions must be valid for `count` bytes.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn memcmp(first: *const c_void, second: *const c_void, count: usize) -> i32 {
-	let (first, second) = (first.cast::<u8>(), second.cast::<u8>());
-	let mut at = 0;
-	// SAFETY: the caller guarantees both regions are valid for `count` bytes.
-	unsafe {
-		while at < count {
-			let (left, right) = (ptr::read_volatile(first.add(at)), ptr::read_volatile(second.add(at)));
-			if left != right {
-				return i32::from(left) - i32::from(right);
+	/// # Safety
+	/// The regions must be valid and must not overlap.
+	#[unsafe(no_mangle)]
+	pub unsafe extern "C" fn memcpy(destination: *mut c_void, source: *const c_void, count: usize) -> *mut c_void {
+		let (destination_bytes, source_bytes) = (destination.cast::<u8>(), source.cast::<u8>());
+		let mut at = 0;
+		// SAFETY: the caller guarantees both regions are valid for `count` bytes.
+		unsafe {
+			while at < count {
+				ptr::write_volatile(destination_bytes.add(at), ptr::read_volatile(source_bytes.add(at)));
+				at += 1;
 			}
-			at += 1;
 		}
+		destination
 	}
-	0
-}
 
-/// # Safety
-/// Both regions must be valid for `count` bytes.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn bcmp(first: *const c_void, second: *const c_void, count: usize) -> i32 {
-	// SAFETY: the same contract as `memcmp`.
-	unsafe { memcmp(first, second, count) }
+	/// # Safety
+	/// The regions must be valid; they may overlap.
+	#[unsafe(no_mangle)]
+	pub unsafe extern "C" fn memmove(destination: *mut c_void, source: *const c_void, count: usize) -> *mut c_void {
+		let (destination_bytes, source_bytes) = (destination.cast::<u8>(), source.cast::<u8>());
+		// SAFETY: the caller guarantees both regions are valid for `count` bytes.
+		unsafe {
+			if destination_bytes.cast_const() <= source_bytes || destination_bytes.cast_const() >= source_bytes.add(count) {
+				return memcpy(destination, source, count);
+			}
+			let mut at = count;
+			while at > 0 {
+				at -= 1;
+				ptr::write_volatile(destination_bytes.add(at), ptr::read_volatile(source_bytes.add(at)));
+			}
+		}
+		destination
+	}
+
+	/// # Safety
+	/// The region must be valid for `count` bytes.
+	#[unsafe(no_mangle)]
+	pub unsafe extern "C" fn memset(destination: *mut c_void, value: i32, count: usize) -> *mut c_void {
+		let destination_bytes = destination.cast::<u8>();
+		let mut at = 0;
+		// SAFETY: the caller guarantees the region is valid for `count` bytes.
+		unsafe {
+			while at < count {
+				ptr::write_volatile(destination_bytes.add(at), value as u8);
+				at += 1;
+			}
+		}
+		destination
+	}
+
+	/// # Safety
+	/// Both regions must be valid for `count` bytes.
+	#[unsafe(no_mangle)]
+	pub unsafe extern "C" fn memcmp(first: *const c_void, second: *const c_void, count: usize) -> i32 {
+		let (first, second) = (first.cast::<u8>(), second.cast::<u8>());
+		let mut at = 0;
+		// SAFETY: the caller guarantees both regions are valid for `count` bytes.
+		unsafe {
+			while at < count {
+				let (left, right) = (ptr::read_volatile(first.add(at)), ptr::read_volatile(second.add(at)));
+				if left != right {
+					return i32::from(left) - i32::from(right);
+				}
+				at += 1;
+			}
+		}
+		0
+	}
+
+	/// # Safety
+	/// Both regions must be valid for `count` bytes.
+	#[unsafe(no_mangle)]
+	pub unsafe extern "C" fn bcmp(first: *const c_void, second: *const c_void, count: usize) -> i32 {
+		// SAFETY: the same contract as `memcmp`.
+		unsafe { memcmp(first, second, count) }
+	}
 }

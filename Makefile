@@ -5,11 +5,11 @@
 
 export CARGO_BUILD_JOBS ?= 4
 
-.PHONY: check check-fast headers fmt clippy test deny art art-check test-art clippy-unix build-unix check-unix smoke-linux-native smoke-freebsd repro-unix
+.PHONY: check check-fast headers fmt clippy test deny art art-check test-art clippy-unix build-unix check-unix smoke-linux-native smoke-freebsd smoke-macos repro-unix
 .PHONY: preview sheet
 .PHONY: fmt-win32 clippy-win32 test-win32 build-win32 check-win32 smoke-wine repro-win32
 
-UNIX_TARGETS := x86_64-unknown-linux-musl i586-unknown-linux-musl aarch64-unknown-linux-musl armv7-unknown-linux-musleabihf arm-unknown-linux-musleabihf mips-unknown-linux-musl mipsel-unknown-linux-musl riscv64gc-unknown-linux-musl powerpc64le-unknown-linux-musl x86_64-unknown-freebsd aarch64-unknown-freebsd
+UNIX_TARGETS := x86_64-unknown-linux-musl i586-unknown-linux-musl aarch64-unknown-linux-musl armv7-unknown-linux-musleabihf arm-unknown-linux-musleabihf mips-unknown-linux-musl mipsel-unknown-linux-musl riscv64gc-unknown-linux-musl powerpc64le-unknown-linux-musl x86_64-unknown-freebsd aarch64-unknown-freebsd x86_64-apple-darwin aarch64-apple-darwin
 WIN32_ARCHES := i586 x86_64 aarch64
 
 # Every later work package adds its builds, size checks and smokes to `check`.
@@ -43,7 +43,7 @@ art-check:
 test-art:
 	python3 -m unittest discover -s art/scripts/tests
 
-# Unix (Linux x86_64, i586, ARM64, ARMv7, ARMv6, MIPS and MIPSel): lint, build, structure and size checks, the smokes that run here, and reproducibility.
+# Unix (Linux, FreeBSD and macOS): lint, build, structure and size checks, the smokes that run here, and reproducibility.
 clippy-unix:
 	for target in $(UNIX_TARGETS); do bash platforms/unix/build.sh $$target clippy || exit 1; done
 
@@ -59,6 +59,10 @@ smoke-linux-native: build-unix
 # FreeBSD (AF-D6, AF-D55): the x86_64 build runs inside the official VM image under QEMU; skipped, and said so, until `scripts/freebsd-vm.sh fetch` has run.
 smoke-freebsd: build-unix
 	@if [ -f "$$HOME/.cache/afterfetch/freebsd/FreeBSD-15.1-RELEASE-amd64-BASIC-CLOUDINIT-ufs.qcow2" ]; then bash scripts/freebsd-vm.sh run; else echo "SKIP smoke-freebsd: no VM image (run scripts/freebsd-vm.sh fetch); unverified"; fi
+
+# macOS (AF-D56): the structure checks above are all that runs here. `make smoke-macos` is for a macOS machine and is what the CI runner calls.
+smoke-macos:
+	bash scripts/smoke/macos.sh
 
 repro-unix:
 	bash scripts/repro-unix.sh $(UNIX_TARGETS)

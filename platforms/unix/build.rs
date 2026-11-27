@@ -1,4 +1,4 @@
-// Tells the crate when it is being built as a raw-syscall Linux or FreeBSD binary. On any other target (the host's own, for `cargo check` of the
+// Tells the crate when it is being built as a raw-syscall Linux or FreeBSD binary, or the libSystem macOS one. On any other target (the host's own, for `cargo check` of the
 // workspace) the crate is an empty program, so the workspace builds everywhere.
 //
 // (c) Copyright 2026 Liminal HQ, Scott Morris
@@ -7,6 +7,7 @@
 fn main() {
 	println!("cargo:rustc-check-cfg=cfg(raw_linux)");
 	println!("cargo:rustc-check-cfg=cfg(raw_freebsd)");
+	println!("cargo:rustc-check-cfg=cfg(raw_macos)");
 	println!("cargo:rustc-check-cfg=cfg(raw_unix)");
 	println!("cargo:rustc-check-cfg=cfg(arm_v7)");
 	println!("cargo:rerun-if-changed=build.rs");
@@ -16,6 +17,10 @@ fn main() {
 	let env = std::env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
 	if os == "linux" && env == "musl" {
 		println!("cargo:rustc-cfg=raw_linux");
+		println!("cargo:rustc-cfg=raw_unix");
+	}
+	if os == "macos" {
+		println!("cargo:rustc-cfg=raw_macos");
 		println!("cargo:rustc-cfg=raw_unix");
 	}
 	if os == "freebsd" {

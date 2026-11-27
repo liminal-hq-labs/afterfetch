@@ -12,6 +12,7 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 root="$(cd "$here/../.." && pwd)"
 binary="${2:-$root/target/$target/release/afterfetch}"
 budget=32768
+macho=""
 data=""
 abi_flags=""
 osabi=""
@@ -21,6 +22,8 @@ allow_file="syscalls.allow"
 case "$target" in
 x86_64-unknown-linux-musl) class="ELF64" machine="Advanced Micro Devices X86-64" ;;
 x86_64-unknown-freebsd) class="ELF64" machine="Advanced Micro Devices X86-64" osabi="FreeBSD" ;; # AF-D55: 32 KiB like Linux
+x86_64-apple-darwin) macho="X86_64" minos="10.12" budget=65536 ;; # SPEC section 11: 64 KiB per macOS arch
+aarch64-apple-darwin) macho="ARM64" minos="11.0" budget=65536 ;;
 aarch64-unknown-freebsd) class="ELF64" machine="AArch64" osabi="FreeBSD" ;;
 aarch64-unknown-linux-musl) class="ELF64" machine="AArch64" ;;
 armv7-unknown-linux-musleabihf | arm-unknown-linux-musleabihf) class="ELF32" machine="ARM" ;;
@@ -45,6 +48,31 @@ fail() {
 }
 
 [ -f "$binary" ] || fail "$binary does not exist"
+
+if [ -n "$macho" ]; then
+	# macOS: a Mach-O executable that links libSystem and nothing else (AF-D5, AF-D56). It cannot run here, so the structure is all that is checked.
+	headers="$(llvm-objdump --macho --private-headers "$binary")"
+	grep -qE "^ *MH_MAGIC_64 +$macho " <<<"$headers" || fail "not a 64-bit $macho Mach-O"
+	grep -qE "EXECUTE" <<<"$headers" || fail "not an executable"
+	grep -q "PIE" <<<"$headers" || fail "not position independent (macOS requires it)"
+	[ "$(grep -c 'cmd LC_LOAD_DYLIB' <<<"$headers")" = 1 ] || fail "does not load exactly one library"
+	grep -q "name /usr/lib/libSystem.B.dylib" <<<"$headers" || fail "does not load libSystem"
+	grep -q "cmd LC_MAIN" <<<"$headers" || fail "has no LC_MAIN"
+	grep -qE "(minos|^ +version) $minos\$" <<<"$headers" || fail "minimum system version is not $minos"
+	if [ "$macho" = ARM64 ]; then
+		grep -q "cmd LC_CODE_SIGNATURE" <<<"$headers" || fail "arm64 macOS needs a code signature, and there is none"
+	fi
+	size="$(stat -c %s "$binary")"
+	[ "$size" -le "$budget" ] || fail "$size bytes is over the $budget byte budget"
+	# Every undefined symbol is in the stub, and every function the source declares is really imported.
+	stub="$(sed -n 's/^ *symbols: *\[//p;s/^ *\([_a-z].*\)\]$/\1/p' "$here/macos/libSystem.tbd" | tr -d ' ' | tr ',' '\n' | grep . | sort -u)"
+	undefined="$(llvm-nm -u "$binary" | tr -d ' ' | sort -u)"
+	declared="$(sed -n '/^unsafe extern "C" {/,/^}/p' "$here/src/os/macos.rs" | grep -oE 'fn [A-Za-z_]+' | sed 's/^fn /_/' | sort -u)"
+	[ -z "$(comm -23 <(printf '%s\n' "$undefined") <(printf '%s\n' "$stub"))" ] || fail "an imported symbol is missing from libSystem.tbd: $(comm -23 <(printf '%s\n' "$undefined") <(printf '%s\n' "$stub") | tr '\n' ' ')"
+	[ -z "$(comm -23 <(printf '%s\n' "$declared") <(printf '%s\n' "$undefined"))" ] || fail "a declared function is not imported: $(comm -23 <(printf '%s\n' "$declared") <(printf '%s\n' "$undefined") | tr '\n' ' ')"
+	echo "ok $target: $size bytes of $budget, Mach-O $macho, libSystem only, minos $minos, $(wc -l <<<"$undefined" | tr -d ' ') imports"
+	exit 0
+fi
 header="$(llvm-readelf -h "$binary")"
 grep -q "Class:.*$class" <<<"$header" || fail "not $class"
 grep -q "Machine:.*$machine" <<<"$header" || fail "not $machine"
