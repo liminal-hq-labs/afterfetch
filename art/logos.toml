@@ -1,0 +1,132 @@
+# The logo manifest: every logo's name, the systems it stands for, its files, sizes and palette, and the default per platform.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+# The generator (art/scripts/afterfetch_art.py) reads this file; docs/art.md is the design language and
+# docs/logo-format.md the .afl blob each entry becomes. Sizes are in logo pixels: one column of cells per pixel, two
+# pixels per row of cells (the upper and lower half of a half-block cell).
+
+[limits]
+# A pixel form is at most 36 x 24 pixels (36 columns x 12 rows of cells), so logo, a gap of 2 and 34 columns of facts fit
+# 80 columns. The decoder's row buffer holds 48 cells, which bounds every width in the format.
+max-width = 36
+max-height = 24
+# An ASCII form is at most 36 x 12, except where a logo sets ascii-width-exception (win32 keeps the ReactOS text at 40).
+max-ascii-width = 36
+max-ascii-rows = 12
+# Budgets for the generated .afl blobs: a blob over blob-bytes, or all blobs together over total-bytes, fails the build.
+blob-bytes = 700
+total-bytes = 6144
+# A master pixel further than this CIE76 distance from every tone in the logo's palette fails the build.
+max-delta-e = 12.0
+# The renderer the committed blobs were made with; a different version warns, and art-check compares anyway.
+renderer = "rsvg-convert 2.63.4"
+
+# The logo each platform shell names in default_logo(). `--logo NAME` picks any logo on any platform.
+[defaults]
+dos = "dos"
+win16 = "win16"
+win32 = "win32"
+linux = "linux"
+freebsd = "freebsd"
+macos = "macos"
+desk = "desk"
+other = "afterglow"
+
+# One entry per logo, in --logo list order. `tones` is the logo's palette in order: tone 1 of the .afl is the first
+# name, and so on (at most 15). It lists every tone the master or the ASCII form uses, and nothing else.
+# `status`: drawn (master and ASCII form exist), brief (docs/art.md has the brief; drawn in AF-WP16).
+
+[[logo]]
+name = "afterglow"
+systems = ["any system without its own logo"]
+status = "drawn"
+master = "masters/afterglow.svg"
+ascii = "ascii/afterglow.txt"
+width = 36
+height = 24
+ascii-width = 36
+ascii-rows = 12
+tones = ["gold", "amber", "orange", "peach", "coral", "rose"]
+
+[[logo]]
+name = "dos"
+systems = ["MS-DOS", "PC DOS", "FreeDOS", "DR-DOS"]
+status = "brief"
+master = "masters/dos.svg"
+ascii = "ascii/dos.txt"
+width = 36
+height = 24
+ascii-width = 36
+ascii-rows = 12
+
+[[logo]]
+name = "win16"
+systems = ["Windows 3.0", "Windows 3.1", "Windows for Workgroups 3.11"]
+status = "brief"
+master = "masters/win16.svg"
+ascii = "ascii/win16.txt"
+width = 36
+height = 24
+ascii-width = 36
+ascii-rows = 12
+
+[[logo]]
+name = "win32"
+systems = ["Windows 95", "Windows 98", "Windows ME", "Windows NT 4.0", "Windows 2000 to 11", "ReactOS"]
+status = "drawn"
+master = "masters/win32.svg"
+ascii = "ascii/win32.txt"
+width = 36
+height = 24
+# Byte for byte the reactos-liminal afterfetch text (tools/afterfetch/src/logo.rs at d6c72ae), so the ReactOS image looks
+# the same; its widest row reaches column 40.
+ascii-width = 40
+ascii-rows = 12
+ascii-width-exception = "reactos-liminal text kept byte for byte"
+tones = ["gold", "orange", "coral", "rose", "lilac", "violet", "periwinkle", "slate"]
+
+[[logo]]
+name = "linux"
+systems = ["Linux"]
+status = "brief"
+master = "masters/linux.svg"
+ascii = "ascii/linux.txt"
+width = 36
+height = 24
+ascii-width = 36
+ascii-rows = 12
+
+[[logo]]
+name = "freebsd"
+systems = ["FreeBSD"]
+status = "brief"
+master = "masters/freebsd.svg"
+ascii = "ascii/freebsd.txt"
+width = 36
+height = 24
+ascii-width = 36
+ascii-rows = 12
+
+[[logo]]
+name = "macos"
+systems = ["macOS"]
+status = "brief"
+master = "masters/macos.svg"
+ascii = "ascii/macos.txt"
+width = 36
+height = 24
+ascii-width = 36
+ascii-rows = 12
+
+[[logo]]
+name = "desk"
+systems = ["Desk OS, native", "Desk OS, hosted on DOS"]
+status = "brief"
+master = "masters/desk.svg"
+ascii = "ascii/desk.txt"
+width = 36
+height = 24
+ascii-width = 36
+ascii-rows = 12

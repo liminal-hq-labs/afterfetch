@@ -1,0 +1,270 @@
+# The Afterglow Dusk palette for afterfetch: every tone a logo may use, and the colour it takes at each depth.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+#
+# Masters fill only with a tone's `rgb`. The generator (art/scripts/afterfetch_art.py) writes every column below into
+# crates/afterfetch-art/src/generated/palette.rs. docs/art.md explains the choices; the numbers here are the truth.
+#
+# Columns of a tone:
+#   id         stable number, 1 to 15 (0 is transparent); never reused or renumbered
+#   letter     the tone's letter in art/ascii/*.txt tone rows
+#   rgb        the design colour, used at truecolour and in masters
+#   xterm256   the xterm-256 index used at 256 colours (16 to 255 only, never the user-themed 0 to 15)
+#   console16  the console attribute index (Win32 consoles, DOS, Windows 3.1 at 16 colours): 0 black, 1 blue, 2 green,
+#              3 cyan, 4 red, 5 magenta, 6 brown/yellow, 7 grey, 8 to 15 bright. Absent: drawn transparent at 16 and in mono
+#   ansi16     the SGR index at 16 colours (30 to 37 and 90 to 97 count from it); always console16 with bits 0 and 2 swapped
+#   mono       bright, normal or dim: bold, plain and faint on Unix; the intensity bit on DOS and MDA. Absent: not drawn
+#   delta-e    CIE76 distance (Lab, D65) from `rgb` to what each depth shows: the xterm256 entry; the console16 entry in
+#              the Dusk console table, the Afterglow terminal ANSI table and the stock Windows and VGA tables
+#   contrast   WCAG contrast of `rgb` on the Dusk console background (navy) and on black
+
+[source]
+repository = "liminal-hq/afterglow-themes"
+commit = "84a8d5c"
+console-table = "desktop/schemes/dusk.reg, desktop/install/afterglow-original.reg (HKCU\\Console ColorTable00 to 15)"
+brand = "scripts/palette.mjs (brand), liminalhq.ca tokens --brand-gold, --orange-200, --red-100, --red-200"
+terminal = "vscode/themes/afterglow-color-theme.json (terminal.ansi*)"
+reactos-liminal = "tools/afterfetch/src/palette.rs at d6c72ae: Tone::index, held by a test against the console16 column"
+
+# The 16 colours the ReactOS image writes to HKCU\Console, in console index order. ColorTable values are COLORREF
+# (0x00BBGGRR), so ColorTable14 = 0x008ed0ff is #ffd08e.
+[tables]
+dusk-console = [
+	"#0a1230", "#7f95f2", "#86cf9a", "#62c6d6", "#f43f5e", "#c98be6", "#ffaa40", "#e9e2d8",
+	"#7c8796", "#a9b8ff", "#b0efc0", "#98e6f0", "#f995a6", "#e4b8f8", "#ffd08e", "#fff7ea",
+]
+# The Afterglow terminal palette (VS Code and Claude Code themes), in ANSI index order.
+afterglow-terminal = [
+	"#333847", "#f43f5e", "#2ec66a", "#fbbf24", "#60a5fa", "#a78bfa", "#22d3ee", "#b4bfce",
+	"#5a6273", "#f995a6", "#8ce0ad", "#fddc87", "#a8cefc", "#cfbffc", "#85e7f6", "#f4f4f8",
+]
+# Stock tables, for the ΔE notes only: the legacy Windows console and the IBM VGA text palette, both in console order.
+stock-console = [
+	"#000000", "#000080", "#008000", "#008080", "#800000", "#800080", "#808000", "#c0c0c0",
+	"#808080", "#0000ff", "#00ff00", "#00ffff", "#ff0000", "#ff00ff", "#ffff00", "#ffffff",
+]
+stock-vga = [
+	"#000000", "#0000aa", "#00aa00", "#00aaaa", "#aa0000", "#aa00aa", "#aa5500", "#aaaaaa",
+	"#555555", "#5555ff", "#55ff55", "#55ffff", "#ff5555", "#ff55ff", "#ffff55", "#ffffff",
+]
+# What mono levels look like in review sheets (not used at run time).
+mono-preview = { bright = "#ffffff", normal = "#aaaaaa", dim = "#5c5c5c" }
+
+# The title rule's tone per architecture (AF-D17): the architecture is text plus this accent.
+[arch-accent]
+x86 = "gold"
+x86_64 = "gold"
+arm = "periwinkle"
+aarch64 = "periwinkle"
+mips = "violet"
+riscv64 = "teal"
+powerpc64 = "lilac"
+other = "slate"
+
+[[tone]]
+id = 1
+name = "gold"
+letter = "g"
+rgb = "#ffd08e"
+xterm256 = 222
+console16 = 14
+ansi16 = 11
+mono = "bright"
+role = "The sun's crown; the first fact label."
+source = "brand --brand-gold; console ColorTable14"
+delta-e = { xterm256 = 7.2, dusk-console = 0.0, afterglow-terminal = 10.6, stock-console = 64.0, stock-vga = 48.6 }
+contrast = { navy = 12.8, black = 14.7 }
+
+[[tone]]
+id = 2
+name = "amber"
+letter = "a"
+rgb = "#ffbd67"
+xterm256 = 221
+console16 = 6
+ansi16 = 3
+mono = "bright"
+role = "The sun between crown and body; 256 colours and truecolour only, orange at 16."
+source = "mix of gold and orange, 50 %"
+delta-e = { xterm256 = 18.7, dusk-console = 15.3, afterglow-terminal = 25.8, stock-console = 40.6, stock-vga = 38.8 }
+contrast = { navy = 11.1, black = 12.7 }
+
+[[tone]]
+id = 3
+name = "orange"
+letter = "o"
+rgb = "#ffaa40"
+xterm256 = 215
+console16 = 6
+ansi16 = 3
+mono = "bright"
+role = "The sun's body."
+source = "brand --orange-200; console ColorTable06"
+delta-e = { xterm256 = 12.5, dusk-console = 0.0, afterglow-terminal = 19.2, stock-console = 43.8, stock-vga = 33.0 }
+contrast = { navy = 9.7, black = 11.1 }
+
+[[tone]]
+id = 4
+name = "peach"
+letter = "h"
+rgb = "#fca073"
+xterm256 = 216
+console16 = 6
+ansi16 = 3
+mono = "normal"
+role = "The sun between body and foot; 256 colours and truecolour only, orange at 16."
+source = "mix of orange and coral, 50 %"
+delta-e = { xterm256 = 8.3, dusk-console = 27.8, afterglow-terminal = 45.1, stock-console = 51.8, stock-vga = 33.4 }
+contrast = { navy = 9.1, black = 10.4 }
+
+[[tone]]
+id = 5
+name = "coral"
+letter = "c"
+rgb = "#f995a6"
+xterm256 = 211
+console16 = 12
+ansi16 = 9
+mono = "normal"
+role = "The sun at the horizon."
+source = "brand --red-100; console ColorTable12"
+delta-e = { xterm256 = 12.9, dusk-console = 0.0, afterglow-terminal = 0.0, stock-console = 74.8, stock-vga = 40.1 }
+contrast = { navy = 8.6, black = 9.9 }
+
+[[tone]]
+id = 6
+name = "rose"
+letter = "r"
+rgb = "#f43f5e"
+xterm256 = 203
+console16 = 4
+ansi16 = 1
+mono = "normal"
+role = "The horizon line, in every logo."
+source = "brand --red-200; console ColorTable04"
+delta-e = { xterm256 = 13.0, dusk-console = 0.0, afterglow-terminal = 0.0, stock-console = 39.0, stock-vga = 33.3 }
+contrast = { navy = 5.0, black = 5.7 }
+
+[[tone]]
+id = 7
+name = "lilac"
+letter = "l"
+rgb = "#e4b8f8"
+xterm256 = 183
+console16 = 13
+ansi16 = 13
+mono = "normal"
+role = "Stars, the light end of the sky, water just under the horizon."
+source = "console ColorTable13"
+delta-e = { xterm256 = 9.3, dusk-console = 0.0, afterglow-terminal = 9.7, stock-console = 81.9, stock-vga = 63.3 }
+contrast = { navy = 11.0, black = 12.5 }
+
+[[tone]]
+id = 8
+name = "violet"
+letter = "v"
+rgb = "#c98be6"
+xterm256 = 176
+console16 = 5
+ansi16 = 5
+mono = "normal"
+role = "The middle of the water; a night sky."
+source = "console ColorTable05"
+delta-e = { xterm256 = 9.2, dusk-console = 0.0, afterglow-terminal = 15.9, stock-console = 42.0, stock-vga = 43.2 }
+contrast = { navy = 7.3, black = 8.3 }
+
+[[tone]]
+id = 9
+name = "periwinkle"
+letter = "p"
+rgb = "#7f95f2"
+xterm256 = 104
+console16 = 1
+ansi16 = 4
+mono = "dim"
+role = "Deeper water; the ARM accent."
+source = "console ColorTable01"
+delta-e = { xterm256 = 9.6, dusk-console = 0.0, afterglow-terminal = 13.5, stock-console = 61.3, stock-vga = 67.9 }
+contrast = { navy = 6.6, black = 7.5 }
+
+[[tone]]
+id = 10
+name = "slate"
+letter = "s"
+rgb = "#7c8796"
+xterm256 = 102
+console16 = 8
+ansi16 = 8
+mono = "dim"
+role = "The darkest water, quiet text."
+source = "console ColorTable08"
+delta-e = { xterm256 = 9.4, dusk-console = 0.0, afterglow-terminal = 14.6, stock-console = 9.7, stock-vga = 21.9 }
+contrast = { navy = 5.0, black = 5.8 }
+
+[[tone]]
+id = 11
+name = "cream"
+letter = "w"
+rgb = "#fff7ea"
+xterm256 = 231
+console16 = 15
+ansi16 = 15
+mono = "bright"
+role = "Highlights: a lit edge, a specular glint, a bright star."
+source = "console ColorTable15"
+delta-e = { xterm256 = 7.6, dusk-console = 0.0, afterglow-terminal = 9.2, stock-console = 7.6, stock-vga = 7.6 }
+contrast = { navy = 17.3, black = 19.7 }
+
+[[tone]]
+id = 12
+name = "night"
+letter = "n"
+rgb = "#4a4580"
+xterm256 = 61
+console16 = 8
+ansi16 = 8
+mono = "dim"
+role = "Silhouettes against a lit sky (a ridge, a far shore); slate at 16, chosen by role because the nearest console colour is the background."
+source = "Afterglow Start orb water line"
+delta-e = { xterm256 = 15.6, dusk-console = 38.0, afterglow-terminal = 29.3, stock-console = 42.9, stock-vga = 37.5 }
+contrast = { navy = 2.1, black = 2.5 }
+
+[[tone]]
+id = 13
+name = "teal"
+letter = "t"
+rgb = "#62c6d6"
+xterm256 = 116
+console16 = 3
+ansi16 = 6
+mono = "normal"
+role = "The RISC-V accent."
+source = "console ColorTable03"
+delta-e = { xterm256 = 11.2, dusk-console = 0.0, afterglow-terminal = 11.5, stock-console = 28.1, stock-vga = 17.1 }
+contrast = { navy = 9.3, black = 10.6 }
+
+[[tone]]
+id = 14
+name = "umber"
+letter = "u"
+rgb = "#7d5422"
+xterm256 = 94
+console16 = 6
+ansi16 = 3
+mono = "dim"
+role = "Desk's halo step 2 and horizon middle (provisional until the desk master)."
+source = "Desk docs/PALETTE.md slot 9"
+delta-e = { xterm256 = 16.6, dusk-console = 48.4, afterglow-terminal = 59.2, stock-console = 35.3, stock-vga = 27.9 }
+contrast = { navy = 2.8, black = 3.2 }
+
+[[tone]]
+id = 15
+name = "soot"
+letter = "d"
+rgb = "#372612"
+xterm256 = 235
+role = "Desk's halo step 3 and horizon bottom (provisional until the desk master); dropped at 16 colours and in mono."
+source = "Desk docs/PALETTE.md slot 10"
+delta-e = { xterm256 = 17.1 }
+contrast = { navy = 1.3, black = 1.4 }
