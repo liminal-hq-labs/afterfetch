@@ -56,7 +56,7 @@ Arguments are parsed by the core from raw bytes, with no allocation, the same wa
 - A usage error (an unknown option, a missing value, or a value that is not a logo name or colour mode) prints one line naming the argument's position to the error stream and exits 2.
 - **`--version`** prints the §2 target name of the build, named by its shell (AF-D44): the i586 Linux build prints `afterfetch 0.1.0 (linux-i586)`.
 
-**Windows 3.1 only.** `AFETCHW.EXE` reads the same options from its command line (a Program Manager item or File > Run) and adds `/DUMP=<file>`: write what a pipe would get to `<file>` and exit without opening a window. `/DUMP` honours `/JSON`, `/NOLOGO` and `/LOGO`; it is how the program is tested. Without `/DUMP` the window always draws in colour; `/PLAIN` and `/MONO` draw the ASCII form in black on white.
+**Windows 3.1 only.** `AFETCHW.EXE` reads the same options from its command line (a Program Manager item or File > Run) and adds `/DUMP=<file>`: write what a pipe would get to `<file>` and exit without opening a window. `/DUMP` honours `/JSON`, `/NOLOGO` and `/LOGO`; it is how the program is tested. Without `/DUMP` the window draws in colour; `/PLAIN` and `/MONO` draw the ASCII form in the Dusk text colour (AF-D58). Windows 3.1 has no exit status a caller can read, so `/DUMP` reports a failure only by the missing file, and a usage error is the message in the output.
 
 **Desk.** A Desk module has no command line. `AFETCH.DMD` always runs as `--plain` with the `desk` logo (§5).
 
@@ -101,7 +101,7 @@ A blank cell means the row is omitted on that platform.
 | Row | DOS | Windows 3.1 | Win32 (95 to 11, ReactOS) | Linux | FreeBSD | macOS | Desk |
 |---|---|---|---|---|---|---|---|
 | Title | Host from `INT 21h AX=5E00h` when a network redirector is loaded, else `%HOSTNAME%` or `%COMPUTERNAME%`; user from `%USER%` | `SYSTEM.INI [Network] UserName` and `ComputerName` (Windows for Workgroups) | `GetUserNameA`, `GetComputerNameA` | `$USER` or `$LOGNAME`, else the uid's name in `/etc/passwd`; `uname().nodename` | `$USER`, else the uid's name in `/etc/passwd`; `kern.hostname` | `$USER`; `kern.hostname` | |
-| OS | `INT 21h AH=30h` and `AX=3306h` (true version); MS-DOS, PC DOS or FreeDOS from the OEM byte, DR-DOS from `AX=4452h`; "in Windows 3.1" (or 3.11) from `INT 2Fh AX=1600h`, which the 32-character value column would cut at "enhanced mode" (AF-D57) | `GetVersion()`: Windows 3.10 or 3.11 and the DOS version | Registry `ProductName` and the `BuildLab` release, or the `GetVersionExA` platform on 9x | `PRETTY_NAME` from `/etc/os-release`, else `/usr/lib/os-release` | `kern.ostype` and `kern.osrelease` | `macOS`, `kern.osproductversion` and `hw.machine` | `Desk` and its version, and the track: `native` or `hosted on DOS` |
+| OS | `INT 21h AH=30h` and `AX=3306h` (true version); MS-DOS, PC DOS or FreeDOS from the OEM byte, DR-DOS from `AX=4452h`; "in Win 3.1" (or 3.11) from `INT 2Fh AX=1600h`, which the 32-character value column would cut at "enhanced mode" (AF-D57) | `GetVersion()`: Windows 3.10 or 3.11 and the DOS version | Registry `ProductName` and the `BuildLab` release, or the `GetVersionExA` platform on 9x | `PRETTY_NAME` from `/etc/os-release`, else `/usr/lib/os-release` | `kern.ostype` and `kern.osrelease` | `macOS`, `kern.osproductversion` and `hw.machine` | `Desk` and its version, and the track: `native` or `hosted on DOS` |
 | Kernel | DOS kernel version, and whether it is loaded high (`AX=3306h` DH bit 4) | Mode: enhanced or standard, from `GetWinFlags()` | `NT 5.2.3790 SP3` on the NT family, `Windows 95 4.00.950` on Windows 9x (4.10 is `Windows 98`, 4.90 `Windows Me`), from the `GetVersionExA` platform | `uname` sysname and release | Name, release and kernel configuration from `kern.version` (`FreeBSD 15.1-RELEASE GENERIC`) | `Darwin` and `kern.osrelease` | Native: `desk-kernel` version; hosted: DOS version and DPMI host |
 | Host | BIOS date at `F000:FFF5` and model byte at `F000:FFFE`, when known | | | `/sys/devices/virtual/dmi/id/product_name`, or `/proc/device-tree/model` on ARM boards; firmware placeholders such as "To Be Filled By O.E.M." are not a model (AF-D39) | `smbios.system.product` through `kenv`, when readable | `hw.model` (`Mac15,6`) | |
 | Uptime | Omitted: DOS has no boot clock, and the BIOS tick count resets at midnight | `GetTickCount()` since Windows started | `GetTickCount64` where present (Vista and later, looked up with `GetProcAddress`), else `GetTickCount`, which wraps at 49.7 days | `/proc/uptime`, else `sysinfo().uptime` | `clock_gettime(CLOCK_UPTIME)` | `kern.boottime` against `gettimeofday` | Time since Desk started, once the SDK reports it |
@@ -154,7 +154,7 @@ Decided once at start, first match wins:
 
 ### Windows 3.1 window
 
-`AFETCHW.EXE` opens a small fixed-size window captioned "afterfetch". The logo is painted as 4 × 4 px pixels (144 × 96 px for a 36 × 24-pixel logo) and the facts in `OEM_FIXED_FONT`, one `TextOut` per run of one colour. Esc, Enter, a click or closing the window ends it. Ctrl+C copies the plain text form to the clipboard as `CF_TEXT`.
+`AFETCHW.EXE` opens a fixed-size window captioned "Afterfetch" on the Dusk navy. The picture is the cell form of the console16 golden (AF-D58): a grid of 80 columns by the rows the output needs, painted in `SYSTEM_FIXED_FONT` with one `TextOut` per run of one attribute, so a fill is a run of spaces on a coloured background and the window is about 640 × 320 px on a VGA system font. Esc, Enter, a click or closing the window ends it. Ctrl+C copying to the clipboard is not implemented.
 
 ### Desk module
 
@@ -257,7 +257,7 @@ Every release binary must fit its budget; `scripts/check-sizes.sh` reads `sizes.
 | FreeBSD x86_64, ARM64 | 32 KiB (AF-D55) |
 | macOS (each arch) | 64 KiB |
 | DOS `AFETCH.EXE` | 64 KiB, CWSDPMI stub included (47.6 KB, AF-D57) |
-| Windows 3.1 `AFETCHW.EXE` | 24 KiB file; code segment `MAIN` 20,000 bytes; DGROUP 16 KiB |
+| Windows 3.1 `AFETCHW.EXE` | 40 KiB file (35.1 KB, AF-D58); code segments of 20,000 bytes (`MAIN` and one more); the data segment 16 KiB (9.5 KB) |
 | Desk `AFETCH.DMD` | 16 KiB (the later window version 24 KiB) |
 | All logo blobs together | 6 KiB (6,144 bytes) and 700 bytes per blob, enforced by the art generator; 2,026 bytes today. 7 KiB is the ceiling if the budget ever has to grow (AF-D40) |
 
@@ -285,7 +285,7 @@ What "verified" means for each target. **Local** means the program runs on this 
 | Win32 | i586, x86_64 | Local, emulated | Wine, plain and a pseudo-terminal console run (attributes for i586, true colour and half blocks for x86_64); Windows 95 in DOSBox-X once per release; the ReactOS guest in reactos-liminal is the real-console proof | Slice (Checkpoint A) for i586 | Built and checked; Windows 95, ReactOS and a real Windows 10 console not yet run |
 | Win32 | aarch64 | Structure locally; CI later | PE checks; runs on a GitHub Windows ARM64 runner after the move (AF-D5) | — | Built and structure-checked; unverified locally |
 | DOS | i386 | Local, emulated | DOSBox Staging, plain and colour (screen read back); FreeDOS in QEMU once per release | **Go** (AF-D57): plain and colour runs pass and the size fits | Built and passing under DOSBox Staging: structure, 386 scan, size (47.6 KB of 64 KiB), plain, `/JSON`, the slash options, the screen read back against the console16 attributes, exit 74, byte-identical builds; FreeDOS, a Windows 3.1 DOS box and real hardware unverified |
-| Windows 3.1 | i386 | Local, emulated | Wine `/DUMP`; Windows for Workgroups 3.11 in DOSBox-X with screenshots | **Go/no-go** (AF-D24): the DOS build is the Windows 3.1 answer if no stable window in two builder sessions | Not started |
+| Windows 3.1 | i386 | Local, emulated | Wine `/DUMP`; Windows for Workgroups 3.11 in DOSBox-X with screenshots | **Go** (AF-D24, AF-D58): both builds run on Windows for Workgroups 3.11 | Built and passing: Wine `/DUMP` shape and a drawn window; on Windows for Workgroups 3.11 in DOSBox-X the window, `/DUMP` and the DOS build in a DOS box; Windows 3.0, standard mode, a 286 and real hardware unverified |
 | Desk | i486 | Structure and host | `dmdpack info` and `cross`, a 486 instruction scan, size, and the module's logic run on the host; runs in Desk's emulators once Desk has a loader | **Go/no-go** (Checkpoint D, AF-D28): re-checked each release, never blocks other platforms | Not started |
 
 Not verified anywhere: real hardware of any kind (ARM boards, MIPS routers, a 486, MDA and Hercules adapters beyond DOSBox's emulation), Windows 3.0 and Windows 3.1 standard or real mode, and real ARM or MIPS kernels (qemu-user uses the host's).

@@ -39,7 +39,7 @@ target/x86_64-unknown-linux-musl/release/afterfetch
 | macOS | ARM64, x86_64 | built and structure-checked here; runs only in CI, after the move to GitHub |
 | Windows (Win32) | x86, x86_64, ARM64 | x86 and x86_64 built, under Wine; ARM64 built, CI only |
 | DOS | 386 and later | built; runs under headless DOSBox Staging; real hardware unverified |
-| Windows 3.1 | 386 enhanced mode | planned, under Wine and in DOSBox-X |
+| Windows 3.1 | 386 enhanced mode | built; a window program and the DOS build in a DOS box, both run on Windows for Workgroups 3.11 in DOSBox-X; real hardware unverified |
 | Desk | 486, as the module `AFETCH.DMD` | planned: host checks only until Desk has a loader |
 
 ## Documentation
