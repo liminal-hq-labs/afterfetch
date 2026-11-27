@@ -18,7 +18,7 @@ bash scripts/repro-unix.sh                           # two builds in two directo
 - `src/rt.rs`: the Rust side of the entry stub, the arguments, the panic handler (exit code 70) and the memory routines the compiler expects from a C library.
 - `src/arch/<arch>.rs`: the `_start` stub, the system call instruction, the system call numbers and the terminal `ioctl` requests.
 - `src/os/linux.rs`: the `Sys` enum (every system call, kept equal to `syscalls.allow` by `check.sh`) and the `Platform` that reads `/etc/os-release`, `/proc`, `/sys` and the environment. The parsing is in `afterfetch-core::parse`.
-- `src/term.rs`: the buffered output and the `Terminal` over `AnsiTerminal`.
+- `src/term.rs`: the buffered output and the `Terminal` over `AnsiTerminal`. `FdSink::finish` flushes and says whether every write worked, so the core's `run` exits 74 on a failed write (AF-D33); the shell has no exit-code logic of its own.
 - `link.ld`: the layout and the sections dropped.
 
 ## Adding an architecture (notes for ARM, MIPS and the rest)
@@ -26,6 +26,7 @@ bash scripts/repro-unix.sh                           # two builds in two directo
 - Add `src/arch/<arch>.rs` with `_start` (pass the initial stack pointer to `rt::start` as the one argument, aligned for the call), `syscall3`, the `nr` numbers and the `TCGETS` and `TIOCGWINSZ` values, then list it in `arch/mod.rs`. MIPS and PowerPC have different `ioctl` request numbers, and MIPS o32 passes errors in `$a3` with a positive result.
 - `rt.rs` and `os/linux.rs` are portable. The structures (`Utsname`, `Sysinfo`) use the kernel's layout with `usize` for `long`; check the 32-bit and big-endian cases.
 - Add the target to `build.sh`'s callers and `check.sh`'s table, and extend `scripts/smoke/` with a runner such as `qemu-aarch64-static`; `shape.py plain <binary> <labels> --runner <emulator>` already takes one.
+- Name the target: `TARGET_ARCH` in `os/linux.rs` gives the SPEC section 2 name (`aarch64`, `armv7`, `mipsel`, `ppc64le`); `--version` and the JSON `target` print it. Fill `facts.arch` with the kernel's own machine name, unmapped, and set the raw numbers with `facts.set_uptime` and `facts.set_memory` so the JSON and the text agree.
 - Only x86 has been built so far. `/proc/cpuinfo` is parsed for the ARM, MIPS and RISC-V shapes from captured files in `crates/afterfetch-core/tests/fixtures/linux/cpuinfo`.
 
 ## Notes for FreeBSD

@@ -22,7 +22,7 @@ The same source and toolchain give the same file in any checkout directory. Carg
 
 - `src/lib.rs`: the parts that need no Windows, so the host can test them: `cmdline` (the command line split as the C runtime splits it) and `attribute` (a core `Style` as a console attribute).
 - `src/main.rs`: the entry point, `start`.
-- `src/os.rs`: the `Platform`, the facts from the Win32 calls, and the whole run (exit code 74 when a write fails).
+- `src/os.rs`: the `Platform`, the facts from the Win32 calls, and the whole run. `Out::flush` tells the core whether every write worked, and `run` exits 74 when one failed (AF-D33).
 - `src/term.rs`: the buffered output and the `Terminal`. On a console a style is `SetConsoleTextAttribute` and every line ends by restoring the console's own attribute; the program restores it again at exit. On a pipe or a file nothing is styled.
 - `src/sys.rs`: the Win32 declarations, `raw-dylib`, ANSI only. `imports.allow` is the list; `tools/check-imports.sh` keeps the executable to it, both ways.
 - `src/rt.rs`: the panic handler (exit 70), the 64-bit division helpers and the stack probe the MSVC ABI expects.
@@ -31,7 +31,7 @@ The same source and toolchain give the same file in any checkout directory. Carg
 
 ## Facts
 
-User and host from `GetUserNameA` and `GetComputerNameA`; the OS from the registry (`ProductName`, and `BuildLab` for the ReactOS release) and `GetSystemInfo` for the architecture; the kernel from `GetVersionExA`; the uptime from `GetTickCount` (it wraps at 49 days); memory from `GlobalMemoryStatus` (it saturates at 4 GiB); the display from `GetSystemMetrics` and `GetDeviceCaps`; the shell from `COMSPEC`. There is no CPU, host-model, desktop or terminal row. The depth hint is `Console16`, the width is the console window's, and a narrow window drops the logo in the core.
+User and host from `GetUserNameA` and `GetComputerNameA`; the OS from the registry (`ProductName`, and `BuildLab` for the ReactOS release) and `GetSystemInfo` for the architecture; the kernel from `GetVersionExA`; the uptime from `GetTickCount` (it wraps at 49 days); memory from `GlobalMemoryStatus` (it saturates at 4 GiB, and so do the byte counts in `--json`); the architecture name for `arch` and the OS row from `GetSystemInfo`; the display from `GetSystemMetrics` and `GetDeviceCaps`; the shell from `COMSPEC`. There is no CPU, host-model, desktop or terminal row. The depth hint is `Console16`, the width is the console window's, and a narrow window drops the logo in the core.
 
 ## Notes for the x86_64 and ARM64 builds
 

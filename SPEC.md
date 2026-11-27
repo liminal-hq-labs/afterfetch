@@ -6,7 +6,7 @@ What `afterfetch` prints, how it is asked, and what each platform build promises
 
 Nothing is released. Every part may change between commits. A part marked **planned** is specified here but not implemented yet.
 
-- **Core** (`afterfetch-core`: arguments, colour depth, facts, layout, JSON): in progress; the command line, facts, layout, depth and JSON below are implemented and host-tested, except where marked planned. The logo decoder reads the generated blobs and draws them in every form at every depth, host-tested with goldens for every logo.
+- **Core** (`afterfetch-core`: arguments, colour depth, facts, layout, JSON): in progress; the command line, facts, layout, depth and JSON below are implemented and host-tested, including exit code 74, JSON schema 1 and the architecture accent. The logo decoder reads the generated blobs and draws them in every form at every depth, host-tested with goldens for every logo.
 - **Art** (`afterfetch-art`, the eight logos): all eight masters and ASCII forms are drawn and their blobs generated (2,026 bytes together, §7). The core decodes them (AF-D46). `umber` and `soot`, used only by `desk`, are provisional until the owner reviews that logo (AF-D42).
 - **Platforms**: Linux x86_64 and i586 build and pass their local checks (§13); the Win32 port is in progress; every other target is not started. The order and the go/no-go checkpoints are in §13.
 
@@ -53,7 +53,7 @@ Arguments are parsed by the core from raw bytes, with no allocation, the same wa
 - Options may come in any order; when one is given twice, the last wins. `--help` and `--version` win over everything else.
 - There are no positional arguments. Anything that is not an option above is a usage error.
 - A usage error (an unknown option, a missing value, or a value that is not a logo name or colour mode) prints one line naming the argument's position to the error stream and exits 2.
-- **`--version` is planned to print the §2 target name** (AF-D44). Today a shell that does not name its target prints the build's operating system and Rust architecture, so the i586 Linux build prints `afterfetch 0.1.0 (linux-x86)` instead of `afterfetch 0.1.0 (linux-i586)`.
+- **`--version`** prints the §2 target name of the build, named by its shell (AF-D44): the i586 Linux build prints `afterfetch 0.1.0 (linux-i586)`.
 
 **Windows 3.1 only.** `AFETCHW.EXE` reads the same options from its command line (a Program Manager item or File > Run) and adds `/DUMP=<file>`: write what a pipe would get to `<file>` and exit without opening a window. `/DUMP` honours `/JSON`, `/NOLOGO` and `/LOGO`; it is how the program is tested. Without `/DUMP` the window always draws in colour; `/PLAIN` and `/MONO` draw the ASCII form in black on white.
 
@@ -66,7 +66,7 @@ Arguments are parsed by the core from raw bytes, with no allocation, the same wa
 | 0 | Done, including `--help`, `--version` and `--logo list` |
 | 2 | Usage error |
 | 70 | Crash: a panic ends the program with 70 on every platform, matching the Liminal Win32 programs |
-| 74 | Output failure: the output could not be written (a closed pipe, or a `/DUMP` file that cannot be created); decision AF-D33 |
+| 74 | Output failure: the output could not be written (a closed pipe, or a `/DUMP` file that cannot be created); decision AF-D33. The core's `run` returns it when the terminal's final flush reports a failed write, unless the run already ends in 2 or 70; a shell returns it for a file it could not create (`output_exit`) |
 
 ## 4 · Facts
 
@@ -149,7 +149,7 @@ Decided once at start, first match wins:
 3. **Mono** uses weight, not colour: the sun and horizon bold, the deep water dim (`ESC[1m`, `ESC[2m`) on Unix, the intensity bit on DOS and MDA, so the sun stays visible on a green screen. Mono has no swatches. In UTF-8 the logo's half blocks are drawn in mono too, a cell with two drawn pixels as one `█` in the weight of the upper one; elsewhere the ASCII form is drawn with its weights and the sun as `#`. A tone with no weight (soot) draws nothing.
 4. **Block glyphs.** The colour logo is drawn with half blocks (`▀ ▄ █`) in UTF-8 on Unix when `LC_ALL`, `LC_CTYPE` or `LANG` names UTF-8, and otherwise as cells (spaces with a background colour). DOS uses the CP437 half blocks `0xDF 0xDC 0xDB`. With colour and no half blocks the sun is solid cells. Win32 consoles use cells, which need no font glyph, and half blocks only in VT mode when `SetConsoleOutputCP(65001)` succeeds. Each tone is drawn in the colour the art table gives it at the depth; a tone with none (night and soot at 16 colours are the cases AF-D42 names) is transparent, and two pixels that show the same colour at the depth are one `█`. A logo's `PIXELS_LOW` picture, when it has one, is used at 16 colours and in mono.
 5. **DOS blink.** While drawing background-coloured cells, DOS turns blink off (`INT 10h AX=1003h BL=0`) so all 16 background colours show, and turns it back on before exit.
-6. **Architecture accent.** The title's rule is drawn in the architecture's accent tone so a row of screenshots tells the arches apart: x86 and x86_64 gold, ARM (32 and 64-bit) periwinkle, MIPS violet, RISC-V teal, PowerPC coral.
+6. **Architecture accent.** The title's rule is drawn in the architecture's accent tone so a row of screenshots tells the arches apart: x86 and x86_64 gold, ARM (32 and 64-bit) periwinkle, MIPS violet, RISC-V teal, PowerPC coral, and slate for any other or unknown architecture (AF-D36). The family is read from the system's own name by prefix (`i686`, `armv7l`, `mipsel`, `ppc64le` and `riscv32` all count) and looked up in the art crate's accent table; the name shown is never changed. A platform that does not fill `arch` gets the slate rule.
 
 ### Windows 3.1 window
 
@@ -164,7 +164,7 @@ Decided once at start, first match wins:
 `--json` writes one JSON object on one line, followed by the platform's line end, with no logo and no colour. Every key always appears, in this order, on every platform. A fact the platform cannot report is `null`: the text output leaves that row out, but JSON keeps the key (AF-D20). Every other value is a string: the same text the plain output prints.
 
 ```json
-{"user":"ada","hostname":"dusk","os":"Debian GNU/Linux 13 (x86_64)","kernel":"Linux 6.12.48","model":"ThinkPad X1 Carbon Gen 11","uptime":"2d 4h 17m","cpu":"Intel(R) Core(TM) i7-1365U (12 cores)","memory":"18.2 GB free of 31.1 GB","display":null,"desktop":"GNOME","terminal":"xterm-256color, 120 x 30","shell":"zsh","resources":null}
+{"schema":1,"user":"ada","hostname":"dusk","os":"Debian GNU/Linux 13 (x86_64)","kernel":"Linux 6.12.48","model":null,"uptime":"2d 4h 17m","cpu":null,"memory":"18.2 GB free of 31.1 GB","display":null,"desktop":"GNOME","terminal":"xterm-256color, 120 x 30","shell":"zsh","resources":null,"target":"linux-x86_64","arch":"x86_64","uptime_seconds":188220,"memory_available_bytes":19541000000,"memory_total_bytes":33400000000}
 ```
 
 | Key | Value |
@@ -172,16 +172,16 @@ Decided once at start, first match wins:
 | `user`, `hostname` | The title's two halves |
 | `os`, `kernel`, `model`, `uptime`, `cpu`, `memory`, `display`, `desktop`, `terminal`, `shell`, `resources` | The rows of §4 |
 
-**Schema version 1 (planned, AF-D34, AF-D43).** The first release's JSON adds a schema number, the build's identity and raw numbers beside the display text. None of these keys is emitted yet:
+**Schema version 1 (AF-D34, AF-D43).** The JSON starts with a schema number and ends with the build's identity and raw numbers beside the display text:
 
 | Key | Value |
 |---|---|
 | `schema` | The number `1`, first in the object, so a script can check which keys to expect |
-| `target`, `arch` | The build's target name (§2) and the architecture name of §4, as strings |
+| `target`, `arch` | The build's target name (§2) and the architecture name of §4 exactly as the system gives it (`x86_64`, `i686`, `aarch64`, `armv7l`), as strings, or `null` when the system does not say |
 | `uptime_seconds` | Whole seconds since boot, a number, or `null` |
 | `memory_available_bytes`, `memory_total_bytes` | The two figures of the Memory row in bytes, numbers, or `null` |
 
-`schema` comes first and the other four follow `resources`, in the order above.
+`schema` comes first and the other five follow `resources`, in the order above, so the object has 19 keys. The numbers are set together with their text rows, so the two cannot disagree. Win32 reads memory with `GlobalMemoryStatus`, which saturates at 4 GiB, so on a larger machine its byte counts stop at 4,294,967,295 until the 64-bit builds ask `GlobalMemoryStatusEx`; its uptime is the 32-bit tick count in whole seconds and wraps after 49 days, as the text row does.
 
 **Encoding.** `"`, `\`, control characters and DEL are escaped. Valid UTF-8 passes through; any other byte from 0x80 up (CP437 on DOS, say) is written as the `\u00XX` escape of the Latin-1 character with that number, so the output is always valid JSON.
 
