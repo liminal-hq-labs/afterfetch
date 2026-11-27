@@ -19,11 +19,12 @@ pub mod parse;
 pub mod run;
 pub mod sink;
 
+pub use afterfetch_art::default_logo;
 pub use args::{Action, ColourMode, LogoChoice, Options, UsageError};
 pub use depth::{Depth, DepthInputs};
 pub use facts::{FactKey, Facts};
 pub use format::Buf;
-pub use logo::LogoName;
+pub use logo::{Blocks, Drawing, Logo, LogoError};
 pub use palette::{Tone, Weight};
 pub use run::{NAME, Platform, TerminalInfo, VERSION, run};
 pub use sink::{AnsiTerminal, ByteSink, Paint, Style, Terminal};

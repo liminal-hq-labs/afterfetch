@@ -5,13 +5,13 @@
 
 #![allow(dead_code)]
 
-use afterfetch_core::{Depth, FactKey, Facts, LogoName, Platform, Style, Terminal, TerminalInfo};
+use afterfetch_core::{ByteSink, Depth, FactKey, Facts, Platform, Style, Terminal, TerminalInfo};
 
 /// A platform whose answers are set by the test.
 pub struct Fake {
 	pub info: TerminalInfo,
 	pub environment: Vec<(&'static str, &'static str)>,
-	pub logo: LogoName,
+	pub logo: &'static str,
 	pub full: bool,
 }
 
@@ -26,7 +26,7 @@ impl Fake {
 				utf8: false,
 			},
 			environment: Vec::new(),
-			logo: LogoName::Win32,
+			logo: "win32",
 			full: true,
 		}
 	}
@@ -58,7 +58,7 @@ impl Platform for Fake {
 			.map(|(_, value)| value.as_bytes())
 	}
 
-	fn default_logo(&self) -> LogoName {
+	fn default_logo(&self) -> &'static str {
 		self.logo
 	}
 }
@@ -91,4 +91,14 @@ pub fn run_with(platform: &mut Fake, arguments: &[&str]) -> (u8, Recorder) {
 	let mut recorder = Recorder::default();
 	let code = afterfetch_core::run(platform, &mut recorder, arguments.iter().map(|argument| argument.as_bytes()));
 	(code, recorder)
+}
+
+/// A byte sink that collects into a `Vec`.
+#[derive(Default)]
+pub struct Collect(pub Vec<u8>);
+
+impl ByteSink for Collect {
+	fn write_bytes(&mut self, bytes: &[u8]) {
+		self.0.extend_from_slice(bytes);
+	}
 }

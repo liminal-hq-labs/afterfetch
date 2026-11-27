@@ -10,7 +10,7 @@ use crate::facts::Facts;
 use crate::format::Buf;
 use crate::json;
 use crate::layout::{self, Layout};
-use crate::logo::LogoName;
+use crate::logo::{Blocks, Logo, find};
 use crate::sink::{Style, Terminal};
 
 /// The program's name, as `--version` prints it.
@@ -46,8 +46,8 @@ pub trait Platform {
 	fn terminal(&mut self) -> TerminalInfo;
 	/// The value of an environment variable.
 	fn env(&self, name: &[u8]) -> Option<&[u8]>;
-	/// The logo drawn for `--logo auto`.
-	fn default_logo(&self) -> LogoName;
+	/// The name of the logo drawn for `--logo auto`: `default_logo` of the art crate for this platform's name (`linux`, `win32`, `dos`).
+	fn default_logo(&self) -> &'static str;
 	/// The name `--version` prints in brackets, such as `linux-x86_64`. The default is the build's own operating system and architecture.
 	fn target_name(&self, out: &mut Buf<32>) {
 		out.push(build_os().as_bytes()).push(b"-").push(build_arch().as_bytes());
@@ -150,8 +150,8 @@ pub fn run<'a>(platform: &mut impl Platform, out: &mut impl Terminal, argv: impl
 			return EXIT_OK;
 		}
 		Action::ListLogos => {
-			for logo in LogoName::ALL {
-				out.write(logo.name().as_bytes());
+			for logo in afterfetch_art::LOGOS {
+				out.write(logo.name.as_bytes());
 				out.end_line();
 			}
 			return EXIT_OK;
@@ -180,10 +180,24 @@ pub fn run<'a>(platform: &mut impl Platform, out: &mut impl Terminal, argv: impl
 		LogoChoice::Auto => platform.default_logo(),
 		LogoChoice::Named(name) => name,
 	};
-	let logo = (!options.no_logo).then(|| logo_name.ascii());
+	// A blob that fails to validate would be a build defect; the facts are still worth printing.
+	let entry = find(logo_name.as_bytes()).or_else(|| find(afterfetch_art::FALLBACK_LOGO.as_bytes()));
+	let logo = entry
+		.filter(|_| !options.no_logo)
+		.and_then(|entry| Logo::parse(entry.blob).ok());
+	let blocks = if info.utf8 { Blocks::Utf8 } else { Blocks::None };
 	let columns = if info.columns == 0 { 80 } else { info.columns };
 	out.set_depth(depth);
 	out.set_style(Style::PLAIN);
-	layout::render(out, &facts, Layout { logo, depth, columns });
+	layout::render(
+		out,
+		&facts,
+		Layout {
+			logo: logo.as_ref(),
+			depth,
+			blocks,
+			columns,
+		},
+	);
 	EXIT_OK
 }

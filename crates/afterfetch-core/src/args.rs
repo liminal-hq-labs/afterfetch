@@ -4,8 +4,6 @@
 // (c) Copyright 2026 Liminal HQ, Scott Morris
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 
-use crate::logo::LogoName;
-
 /// What the program was asked to do.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Action {
@@ -60,7 +58,8 @@ impl ColourMode {
 pub enum LogoChoice {
 	/// The platform's own.
 	Auto,
-	Named(LogoName),
+	/// A logo of `afterfetch-art`, by its own name.
+	Named(&'static str),
 }
 
 /// The parsed command line.
@@ -218,7 +217,7 @@ pub fn parse<'a>(argv: impl Iterator<Item = &'a [u8]>) -> Result<Options, UsageE
 				} else if value.eq_ignore_ascii_case(b"auto") {
 					options.logo = LogoChoice::Auto;
 				} else {
-					options.logo = LogoChoice::Named(LogoName::parse(value).ok_or(error(UsageKind::BadValue))?);
+					options.logo = LogoChoice::Named(crate::logo::find(value).ok_or(error(UsageKind::BadValue))?.name);
 				}
 			}
 		}
@@ -248,7 +247,7 @@ mod tests {
 
 	#[test]
 	fn a_logo_by_name_in_both_spellings() {
-		let wanted = LogoChoice::Named(LogoName::Win32);
+		let wanted = LogoChoice::Named("win32");
 		assert_eq!(parse_all(&["--logo", "win32"]).unwrap().logo, wanted);
 		assert_eq!(parse_all(&["--logo=win32"]).unwrap().logo, wanted);
 		assert_eq!(parse_all(&["--logo", "WIN32"]).unwrap().logo, wanted);
@@ -293,7 +292,7 @@ mod tests {
 	fn the_slash_forms_match_the_long_ones_in_any_case() {
 		let options = parse_all(&["/plain", "/NOLOGO", "/Logo:dos", "/MONO", "/json"]).unwrap();
 		assert!(options.plain && options.no_logo && options.json);
-		assert_eq!(options.logo, LogoChoice::Named(LogoName::Dos));
+		assert_eq!(options.logo, LogoChoice::Named("dos"));
 		assert_eq!(options.colour, ColourMode::Mono);
 		assert_eq!(parse_all(&["/COLOUR:256"]).unwrap().colour, ColourMode::Ansi256);
 	}
@@ -302,7 +301,7 @@ mod tests {
 	fn later_arguments_win() {
 		let options = parse_all(&["--colour", "256", "--colour", "never", "--logo", "dos", "--logo", "linux"]).unwrap();
 		assert_eq!(options.colour, ColourMode::Never);
-		assert_eq!(options.logo, LogoChoice::Named(LogoName::Linux));
+		assert_eq!(options.logo, LogoChoice::Named("linux"));
 	}
 
 	#[test]

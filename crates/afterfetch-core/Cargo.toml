@@ -13,5 +13,8 @@ rust-version.workspace = true
 repository.workspace = true
 publish = false
 
+[dependencies]
+afterfetch-art = { path = "../afterfetch-art" }
+
 [lints]
 workspace = true

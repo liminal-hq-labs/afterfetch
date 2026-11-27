@@ -62,6 +62,8 @@ fn logo_list_prints_every_name() {
 	let (code, recorder) = run_with(&mut Fake::reactos(), &["--logo", "list"]);
 	assert_eq!(code, 0);
 	assert_eq!(recorder.text, "afterglow\ndos\nwin16\nwin32\nlinux\nfreebsd\nmacos\ndesk\n");
+	let names: Vec<&str> = afterfetch_art::LOGOS.iter().map(|logo| logo.name).collect();
+	assert_eq!(recorder.text.lines().collect::<Vec<_>>(), names);
 }
 
 #[test]

@@ -10,7 +10,7 @@ use afterfetch_core::parse::lines::LineFeed;
 use afterfetch_core::parse::meminfo::MemInfo;
 use afterfetch_core::parse::os_release::OsRelease;
 use afterfetch_core::parse::{basename, model, passwd, uptime};
-use afterfetch_core::{FactKey, Facts, LogoName, Platform, TerminalInfo, depth, run};
+use afterfetch_core::{FactKey, Facts, Platform, TerminalInfo, default_logo, depth, run};
 
 use crate::arch::{self, nr};
 use crate::rt::{Args, c_bytes};
@@ -370,8 +370,8 @@ impl Platform for Linux {
 		self.var(name)
 	}
 
-	fn default_logo(&self) -> LogoName {
-		LogoName::Linux
+	fn default_logo(&self) -> &'static str {
+		default_logo("linux")
 	}
 }
 

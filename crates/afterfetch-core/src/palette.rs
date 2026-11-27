@@ -1,5 +1,5 @@
-// The colours afterfetch uses, as names for the roles they play in the picture, each mapped to one of the console's 16 colour slots and
-// to a colour at every depth.
+// The colours afterfetch uses, as names for the roles they play in the picture, each with a colour at every depth from the generated
+// palette in `afterfetch-art`, and the console's 16 slots in the Dusk table for the swatches.
 //
 // The Win32 image sets the console's colour table from the Afterglow Dusk palette (HKCU\Console, ColorTable00 to 15), so a slot here is
 // an Afterglow colour on that image and whatever the user's own table holds elsewhere. The slots follow the order of the table, which
@@ -8,20 +8,33 @@
 // (c) Copyright 2026 Liminal HQ, Scott Morris
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 
+use afterfetch_art::Mono;
+
+use crate::depth::Depth;
+
+/// The generated tones, kept as one table for every lookup.
+static TONES: &[afterfetch_art::Tone; 15] = &afterfetch_art::TONES;
+
 /// The Afterglow Dusk console table as 0xRRGGBB, indexed by console slot (blue is bit 0, red is bit 2, as on Windows and DOS).
 pub const DUSK: [u32; 16] = [
 	0x0a1230, 0x7f95f2, 0x86cf9a, 0x62c6d6, 0xf43f5e, 0xc98be6, 0xffaa40, 0xe9e2d8, 0x7c8796, 0xa9b8ff, 0xb0efc0, 0x98e6f0,
 	0xf995a6, 0xe4b8f8, 0xffd08e, 0xfff7ea,
 ];
 
-/// A role in the picture. `Plain` is the console's own foreground and background.
+/// A tone of the palette: a role in the picture, with the id the tone has in `afterfetch-art` (the discriminant) and a colour at every
+/// depth from that crate's generated table. `Plain` is the console's own foreground and background.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
 pub enum Tone {
 	Plain,
-	/// The sun: pale gold.
+	/// The sun's crown: pale gold.
 	Gold,
-	/// The lower sun.
+	/// Crown to body.
+	Amber,
+	/// The sun's body.
 	Orange,
+	/// Body to foot.
+	Peach,
 	/// The sun at the horizon.
 	Coral,
 	/// The horizon line.
@@ -34,6 +47,16 @@ pub enum Tone {
 	Periwinkle,
 	/// The darkest water, and quiet text.
 	Slate,
+	/// Highlights.
+	Cream,
+	/// Silhouettes.
+	Night,
+	/// The RISC-V accent.
+	Teal,
+	/// Desk's halo, middle ring.
+	Umber,
+	/// Desk's halo, outer ring.
+	Soot,
 }
 
 /// How strongly a tone is drawn when colour is not available.
@@ -45,35 +68,81 @@ pub enum Weight {
 }
 
 impl Tone {
-	/// The console colour slot (0 to 15) this tone is drawn with, or None for `Plain`.
-	pub const fn index(self) -> Option<u8> {
-		match self {
-			Tone::Plain => None,
-			Tone::Gold => Some(14),
-			Tone::Orange => Some(6),
-			Tone::Coral => Some(12),
-			Tone::Rose => Some(4),
-			Tone::Lilac => Some(13),
-			Tone::Violet => Some(5),
-			Tone::Periwinkle => Some(1),
-			Tone::Slate => Some(8),
-		}
+	const ALL: [Tone; 16] = [
+		Tone::Plain,
+		Tone::Gold,
+		Tone::Amber,
+		Tone::Orange,
+		Tone::Peach,
+		Tone::Coral,
+		Tone::Rose,
+		Tone::Lilac,
+		Tone::Violet,
+		Tone::Periwinkle,
+		Tone::Slate,
+		Tone::Cream,
+		Tone::Night,
+		Tone::Teal,
+		Tone::Umber,
+		Tone::Soot,
+	];
+
+	/// The tone with this art id (1 to 15), or `Plain` for 0 and anything else.
+	pub fn from_id(id: u8) -> Tone {
+		Tone::ALL.get(usize::from(id)).copied().unwrap_or(Tone::Plain)
 	}
 
-	/// The tone's colour as `[red, green, blue]`, or None for `Plain`.
-	pub const fn rgb(self) -> Option<[u8; 3]> {
-		match self.index() {
-			None => None,
-			Some(slot) => Some(slot_rgb(slot)),
-		}
+	/// The generated table's entry for this tone, or None for `Plain`.
+	fn entry(self) -> Option<&'static afterfetch_art::Tone> {
+		// Ids are positions plus one (held by a test in `afterfetch-art`), so no search is needed.
+		TONES.get(usize::from(self as u8).wrapping_sub(1))
+	}
+
+	/// The console colour slot (0 to 15) this tone is drawn with at 16 colours, or None for `Plain` and for a tone with no 16-colour
+	/// match (soot), which is then drawn as transparent.
+	pub fn index(self) -> Option<u8> {
+		self.entry()?.console16
+	}
+
+	/// The tone's design colour as `[red, green, blue]`, or None for `Plain`.
+	pub fn rgb(self) -> Option<[u8; 3]> {
+		Some(self.entry()?.rgb)
+	}
+
+	/// The xterm 256-colour number, or None for `Plain`.
+	pub fn xterm256(self) -> Option<u8> {
+		Some(self.entry()?.xterm256)
 	}
 
 	/// How the tone is drawn on a mono display: the sun and the horizon stand out, the water recedes.
-	pub const fn mono_weight(self) -> Weight {
-		match self {
-			Tone::Gold | Tone::Orange | Tone::Coral | Tone::Rose => Weight::Bold,
-			Tone::Periwinkle | Tone::Slate => Weight::Dim,
-			Tone::Plain | Tone::Lilac | Tone::Violet => Weight::Normal,
+	pub fn mono_weight(self) -> Weight {
+		match self.entry().and_then(|entry| entry.mono) {
+			Some(Mono::Bright) => Weight::Bold,
+			Some(Mono::Dim) => Weight::Dim,
+			_ => Weight::Normal,
+		}
+	}
+
+	/// True when the tone is drawn at `depth`. A tone with no 16-colour match is transparent at 16 colours, and one with no mono weight
+	/// is transparent in mono (`docs/logo-format.md`, depth forms). Without colour (`None`) every character of the ASCII form is drawn.
+	pub fn shows(self, depth: Depth) -> bool {
+		match depth {
+			Depth::None | Depth::Ansi256 | Depth::TrueColour => true,
+			Depth::Ansi16 | Depth::Console16 => self.index().is_some(),
+			Depth::Mono => self.entry().is_some_and(|entry| entry.mono.is_some()),
+		}
+	}
+
+	/// A number that is the same for two tones exactly when they look the same at `depth`, so a cell of two such tones is one solid block.
+	pub fn shade(self, depth: Depth) -> u32 {
+		match depth {
+			Depth::None => 0,
+			Depth::Mono => self.mono_weight() as u32,
+			Depth::Ansi16 | Depth::Console16 => u32::from(self.index().unwrap_or(0)),
+			Depth::Ansi256 => u32::from(self.xterm256().unwrap_or(0)),
+			Depth::TrueColour => self
+				.rgb()
+				.map_or(0, |[red, green, blue]| u32::from_be_bytes([0, red, green, blue])),
 		}
 	}
 }
@@ -138,7 +207,7 @@ const fn distance(rgb: [u8; 3], other: [i32; 3]) -> i32 {
 
 /// The console attribute for text in `tone` over the console's own background: `default` is the attribute the console had at the start.
 /// Bits above the colour nibbles (such as reverse video) are kept.
-pub const fn text_attribute(default: u16, tone: Tone) -> u16 {
+pub fn text_attribute(default: u16, tone: Tone) -> u16 {
 	match tone.index() {
 		None => default,
 		Some(index) => (default & !0x000F) | index as u16,
@@ -146,7 +215,7 @@ pub const fn text_attribute(default: u16, tone: Tone) -> u16 {
 }
 
 /// The console attribute for a filled cell in `tone`: a space on a background of that colour.
-pub const fn fill_attribute(default: u16, tone: Tone) -> u16 {
+pub fn fill_attribute(default: u16, tone: Tone) -> u16 {
 	match tone.index() {
 		None => default,
 		Some(index) => (default & !0x00F0) | ((index as u16) << 4),

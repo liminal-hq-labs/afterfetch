@@ -9,6 +9,9 @@ version = "0.1.0"
 [[package]]
 name = "afterfetch-core"
 version = "0.1.0"
+dependencies = [
+ "afterfetch-art",
+]
 
 [[package]]
 name = "afterfetch-unix"

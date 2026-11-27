@@ -6,7 +6,7 @@
 
 use crate::depth::Depth;
 use crate::facts::{FactKey, Facts};
-use crate::logo::{Ascii, tone_of};
+use crate::logo::{Blocks, Logo};
 use crate::palette::Tone;
 use crate::sink::{Paint, Style, Terminal};
 
@@ -17,8 +17,10 @@ const FACT_ROOM: usize = 34;
 #[derive(Clone, Copy)]
 pub struct Layout<'a> {
 	/// The logo, or None for the facts alone.
-	pub logo: Option<&'a Ascii>,
+	pub logo: Option<&'a Logo<'a>>,
 	pub depth: Depth,
+	/// The half blocks the terminal can draw, if any.
+	pub blocks: Blocks,
 	/// The terminal's width in columns.
 	pub columns: usize,
 }
@@ -76,20 +78,23 @@ pub fn render(out: &mut impl Terminal, facts: &Facts, layout: Layout<'_>) {
 			_ => None,
 		})
 		.fold(10, usize::max);
-	let side_by_side = layout.logo.filter(|logo| layout.columns >= logo.info_column + FACT_ROOM);
-	let left = side_by_side.map_or(0, |logo| logo.info_column);
+	let side_by_side = layout.logo.filter(|logo| layout.columns >= logo.info_column() + FACT_ROOM);
+	let left = side_by_side.map_or(0, Logo::info_column);
 	let room = layout.columns.saturating_sub(left + label_width + 1);
 
 	// With the logo, the facts start on its second row; without it, at the top.
 	let first_line = usize::from(side_by_side.is_some());
-	let total = match side_by_side {
-		Some(logo) => logo.rows.len().max(first_line + list.len()),
-		None => list.len(),
+	let mut drawing = side_by_side.map(|logo| logo.drawing(layout.depth, layout.blocks));
+	let logo_rows = drawing.as_ref().map_or(0, |drawing| drawing.rows());
+	let total = if drawing.is_some() {
+		logo_rows.max(first_line + list.len())
+	} else {
+		list.len()
 	};
 	for row in 0..total {
 		let mut written = 0;
-		if let Some(logo) = side_by_side.filter(|logo| row < logo.rows.len()) {
-			written = logo_row(out, logo, row, layout.depth);
+		if let Some(drawing) = drawing.as_mut().filter(|_| row < logo_rows) {
+			written = drawing.draw_row(out);
 		}
 		if let Some(line) = row.checked_sub(first_line).and_then(|at| list.get(at)) {
 			// A gap row is empty, so its padding would be trailing spaces.
@@ -100,38 +105,6 @@ pub fn render(out: &mut impl Terminal, facts: &Facts, layout: Layout<'_>) {
 		}
 		out.end_line();
 	}
-}
-
-/// The style for text in `tone` at `depth`: its colour with colour, its weight in mono, nothing otherwise.
-fn text_style(depth: Depth, tone: Tone) -> Style {
-	match depth {
-		Depth::None => Style::PLAIN,
-		Depth::Mono => Style::mono(tone),
-		_ => Style::text(tone),
-	}
-}
-
-fn logo_row(out: &mut impl Terminal, logo: &Ascii, row: usize, depth: Depth) -> usize {
-	let art = logo.rows[row].art.as_bytes();
-	let tones = logo.rows[row].tones.as_bytes();
-	let mut at = 0;
-	while at < art.len() {
-		let tone = tone_of(tones[at]);
-		let solid = art[at] == b'#';
-		let mut end = at;
-		while end < art.len() && tone_of(tones[end]) == tone && (art[end] == b'#') == solid {
-			end += 1;
-		}
-		if solid && depth.has_colour() {
-			out.set_style(Style::fill(Paint::Tone(tone)));
-			spaces(out, end - at);
-		} else {
-			out.set_style(text_style(depth, tone));
-			out.write(&art[at..end]);
-		}
-		at = end;
-	}
-	art.len()
 }
 
 fn spaces(out: &mut impl Terminal, count: usize) {
@@ -153,7 +126,7 @@ fn pad(out: &mut impl Terminal, count: usize) {
 
 fn dashes(out: &mut impl Terminal, depth: Depth, count: usize) {
 	const DASHES: &[u8] = b"--------------------------------------------------------------------------------";
-	out.set_style(text_style(depth, Tone::Slate));
+	out.set_style(Style::at(depth, Tone::Slate));
 	out.write(&DASHES[..count.min(DASHES.len())]);
 }
 
@@ -174,15 +147,15 @@ fn info_line(out: &mut impl Terminal, facts: &Facts, line: Line, depth: Depth, l
 		Line::Title => {
 			let (user, host) = (facts.user.as_bytes(), facts.host.as_bytes());
 			if !user.is_empty() {
-				out.set_style(text_style(depth, Tone::Gold));
+				out.set_style(Style::at(depth, Tone::Gold));
 				out.write(user);
 			}
 			if !user.is_empty() && !host.is_empty() {
-				out.set_style(text_style(depth, Tone::Slate));
+				out.set_style(Style::at(depth, Tone::Slate));
 				out.write(b"@");
 			}
 			if !host.is_empty() {
-				out.set_style(text_style(depth, if user.is_empty() { Tone::Gold } else { Tone::Lilac }));
+				out.set_style(Style::at(depth, if user.is_empty() { Tone::Gold } else { Tone::Lilac }));
 				out.write(host);
 			}
 		}
@@ -192,7 +165,7 @@ fn info_line(out: &mut impl Terminal, facts: &Facts, line: Line, depth: Depth, l
 			dashes(out, depth, user + at + host);
 		}
 		Line::Fact(key) => {
-			out.set_style(text_style(depth, key.tone()));
+			out.set_style(Style::at(depth, key.tone()));
 			out.write(key.label().as_bytes());
 			pad(out, label_width.saturating_sub(key.label().len()));
 			out.set_style(Style::PLAIN);
@@ -211,8 +184,20 @@ fn info_line(out: &mut impl Terminal, facts: &Facts, line: Line, depth: Depth, l
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::logo::{INFO_COLUMN, LogoName, ROWS};
 	use crate::palette::{Weight, fill_attribute, text_attribute};
+
+	/// The `win32` logo's ASCII form, as drawn by hand: an art line and a tone line for each row.
+	const WIN32_ASCII: &str = include_str!("../../../art/ascii/win32.txt");
+	const INFO_COLUMN: usize = 42;
+
+	fn win32() -> Logo<'static> {
+		Logo::parse(afterfetch_art::find("win32").unwrap().blob).unwrap()
+	}
+
+	/// The art lines of the `win32` ASCII form.
+	fn art_rows() -> Vec<&'static str> {
+		WIN32_ASCII.lines().step_by(2).collect()
+	}
 
 	/// Collects the output as plain text, and the tone of every character as a parallel string of letters.
 	struct Capture {
@@ -226,15 +211,7 @@ mod tests {
 		match paint {
 			Paint::Default => ' ',
 			Paint::Slot(slot) => char::from_digit(u32::from(slot) % 10, 10).unwrap(),
-			Paint::Tone(Tone::Plain) => ' ',
-			Paint::Tone(Tone::Gold) => 'g',
-			Paint::Tone(Tone::Orange) => 'o',
-			Paint::Tone(Tone::Coral) => 'c',
-			Paint::Tone(Tone::Rose) => 'r',
-			Paint::Tone(Tone::Lilac) => 'l',
-			Paint::Tone(Tone::Violet) => 'v',
-			Paint::Tone(Tone::Periwinkle) => 'p',
-			Paint::Tone(Tone::Slate) => 's',
+			Paint::Tone(tone) => afterfetch_art::tone(tone as u8).map_or(' ', |tone| char::from(tone.letter)),
 		}
 	}
 
@@ -274,9 +251,11 @@ mod tests {
 			tones: String::new(),
 			style: Style::PLAIN,
 		};
+		let win32 = win32();
 		let layout = Layout {
-			logo: logo.then(|| LogoName::Win32.ascii()),
+			logo: logo.then_some(&win32),
 			depth,
+			blocks: Blocks::None,
 			columns,
 		};
 		render(&mut capture, facts, layout);
@@ -294,8 +273,9 @@ mod tests {
 	fn plain_output_is_the_ascii_picture_beside_the_facts() {
 		let (lines, _) = run(false, 80, &sample());
 		assert_eq!(lines.len(), 12);
-		let beside = |row: usize, fact: &str| format!("{:<width$}{fact}", ROWS[row].art, width = INFO_COLUMN);
-		assert_eq!(lines[0], ROWS[0].art);
+		let rows = art_rows();
+		let beside = |row: usize, fact: &str| format!("{:<width$}{fact}", rows[row], width = INFO_COLUMN);
+		assert_eq!(lines[0], rows[0]);
 		assert_eq!(lines[1], beside(1, "administrator@reactos"));
 		assert_eq!(lines[2], beside(2, "---------------------"));
 		assert_eq!(lines[3], beside(3, "OS:       ReactOS 0.4.16-x86"));
@@ -305,9 +285,9 @@ mod tests {
 		assert_eq!(lines[7], beside(7, "Display:  1024 x 768, 32-bit"));
 		assert_eq!(lines[8], beside(8, "Shell:    cmd.exe"));
 		// No swatches on a pipe: the last rows hold the water alone.
-		assert_eq!(lines[9], ROWS[9].art);
-		assert_eq!(lines[10], ROWS[10].art);
-		assert_eq!(lines[11], ROWS[11].art);
+		assert_eq!(lines[9], rows[9]);
+		assert_eq!(lines[10], rows[10]);
+		assert_eq!(lines[11], rows[11]);
 	}
 
 	#[test]
@@ -349,8 +329,9 @@ mod tests {
 		assert!(!lines[3].contains('#'));
 		assert!(tones[3].contains("gggggggg"));
 		assert_eq!(lines[3].trim_start().get(..2), Some(".:"));
+		let rows = art_rows();
 		// A gap row, then two rows of eight two-cell swatches.
-		assert_eq!(lines[9], ROWS[9].art, "the gap row has no swatches");
+		assert_eq!(lines[9], rows[9], "the gap row has no swatches");
 		assert!(lines[10].ends_with(&" ".repeat(16)));
 		assert!(tones[10].ends_with("0011223344556677"));
 		assert!(tones[11].ends_with("8899001122334455"));
@@ -450,9 +431,11 @@ mod tests {
 			fn end_line(&mut self) {}
 		}
 		let mut weights = Weights(Vec::new());
+		let win32 = win32();
 		let layout = Layout {
-			logo: Some(LogoName::Win32.ascii()),
+			logo: Some(&win32),
 			depth: Depth::Mono,
+			blocks: Blocks::None,
 			columns: 80,
 		};
 		render(&mut weights, &sample(), layout);

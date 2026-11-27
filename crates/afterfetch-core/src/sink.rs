@@ -18,12 +18,30 @@ pub enum Paint {
 }
 
 impl Paint {
-	/// The console slot the paint stands for, or None for the terminal's own colour.
-	pub const fn slot(self) -> Option<u8> {
+	/// The console slot the paint stands for, or None for the terminal's own colour (and for a tone with no 16-colour match).
+	pub fn slot(self) -> Option<u8> {
 		match self {
 			Paint::Default => None,
 			Paint::Tone(tone) => tone.index(),
 			Paint::Slot(slot) => Some(slot & 0x0F),
+		}
+	}
+
+	/// The 24-bit colour: a tone's design colour, or the swatch slot's Dusk colour.
+	fn rgb(self) -> Option<[u8; 3]> {
+		match self {
+			Paint::Default => None,
+			Paint::Tone(tone) => tone.rgb(),
+			Paint::Slot(slot) => Some(slot_rgb(slot)),
+		}
+	}
+
+	/// The xterm 256-colour number: a tone's table entry (which is not always the nearest, see `docs/art.md`), or the nearest to the
+	/// swatch slot's Dusk colour.
+	fn xterm256(self) -> Option<u8> {
+		match self {
+			Paint::Tone(tone) => tone.xterm256(),
+			_ => self.rgb().map(xterm256_nearest),
 		}
 	}
 }
@@ -62,8 +80,17 @@ impl Style {
 		}
 	}
 
+	/// Text in `tone` as `depth` draws it: its colour with colour, its weight in mono, nothing otherwise.
+	pub fn at(depth: Depth, tone: Tone) -> Style {
+		match depth {
+			Depth::None => Style::PLAIN,
+			Depth::Mono => Style::mono(tone),
+			_ => Style::text(tone),
+		}
+	}
+
 	/// Text in `tone` drawn by weight alone, for the mono depth.
-	pub const fn mono(tone: Tone) -> Style {
+	pub fn mono(tone: Tone) -> Style {
 		Style {
 			fg: Paint::Default,
 			bg: Paint::Default,
@@ -121,10 +148,10 @@ impl<'a, S: ByteSink> AnsiTerminal<'a, S> {
 	}
 
 	fn colour(&mut self, paint: Paint, background: bool) {
-		let Some(slot) = paint.slot() else { return };
 		let mut digits = crate::format::Buf::<24>::new();
 		match self.depth {
 			Depth::Ansi16 => {
+				let Some(slot) = paint.slot() else { return };
 				let number = ansi16_of_slot(slot);
 				let base = match (background, number >= 8) {
 					(false, false) => 30,
@@ -135,12 +162,13 @@ impl<'a, S: ByteSink> AnsiTerminal<'a, S> {
 				digits.push_u32(u32::from(base + (number & 7)));
 			}
 			Depth::Ansi256 => {
+				let Some(number) = paint.xterm256() else { return };
 				digits
 					.push(if background { b"48;5;" } else { b"38;5;" })
-					.push_u32(u32::from(xterm256_nearest(slot_rgb(slot))));
+					.push_u32(u32::from(number));
 			}
 			Depth::TrueColour => {
-				let [red, green, blue] = slot_rgb(slot);
+				let Some([red, green, blue]) = paint.rgb() else { return };
 				digits
 					.push(if background { b"48;2;" } else { b"38;2;" })
 					.push_u32(u32::from(red))
