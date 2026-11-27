@@ -59,8 +59,8 @@ Afterfetch is a [Liminal HQ Labs](https://github.com/liminal-hq-labs) experiment
 
 ## Git workflow
 
-- `main` is the default branch. While there is no remote, work lands straight onto `main` (see [Areas and landing](#areas-and-landing)). Once pull requests exist, work on topic branches (`feat/`, `fix/issue-<n>-…`, `docs/`, `chore/`, `ci/`, `build/`) and merge with merge commits only: no squash, no rebase merges, branches deleted on merge.
-- **Never** push, tag, publish or dispatch workflows unless asked. The repository has no remote yet.
+- `main` is the default branch and is never committed to directly. Work on topic branches (`feat/`, `fix/issue-<n>-…`, `docs/`, `chore/`, `ci/`, `build/`) and merge with merge commits only: no squash, no rebase merges, branches deleted on merge.
+- **Never** push, tag, publish or dispatch workflows unless asked.
 - **Never** run `git add -A` or `git commit -a`, because checkouts may be shared. Stage explicit paths.
 - Prefer the `gh` CLI for GitHub work.
 - Planning files such as `PLAN.md` stay out of git.
@@ -70,7 +70,7 @@ Afterfetch is a [Liminal HQ Labs](https://github.com/liminal-hq-labs) experiment
 [`docs/landing.md`](docs/landing.md) is canonical. In short:
 
 - **One builder per area at a time.** Areas: `core` (`crates/afterfetch-core`), `art` (`art/`, `crates/afterfetch-art`), `unix`, `win32`, `dos`, `win16` and `repo` (root files, Makefile, scripts, docs, and the host-only `crates/afterfetch-preview`). Two work packages touching one area never run together.
-- **Straight onto `main`**, with `make check` passing before every commit. One active builder works in the main checkout. Two or three at once each use a worktree at `~/source/worktrees/afterfetch/<wp-id>` on `wp/<wp-id>`, then `git rebase main` and `git merge --ff-only`, and remove the worktree and branch.
+- **By pull request**, with `make check` passing before every commit. Each builder uses a worktree at `~/source/worktrees/afterfetch/<wp-id>` on a topic branch, keeps it current with `git rebase main`, lands it with a merge commit and then removes the worktree and branch.
 - Sign each commit with the agent's own model in `Co-Authored-By`.
 
 ## Local tooling

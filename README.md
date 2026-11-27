@@ -12,7 +12,7 @@ A tiny system-information command with an Afterglow sun for every system, from D
 
 Afterfetch prints a short, neofetch-style summary of the system it runs on, beside a different Afterglow sun for each kind of system. It is one tiny static program per platform, with no libc and no runtime to install.
 
-> **Status:** experimental, local only, no remote yet, no releases. The Linux x86_64 and i586 builds run; all eight logos are drawn, and the program draws them once the core's decoder lands. The Win32 i586 and x86_64 builds run under Wine and the ARM64 one builds (it runs on CI only), and the other platforms are not started.
+> **Status:** experimental, no releases. The Linux x86_64 and i586 builds run; all eight logos are drawn, and the program draws them once the core's decoder lands. The Win32 i586 and x86_64 builds run under Wine and the ARM64 one builds (it runs on CI only), and the other platforms are not started.
 
 ## What it's for
 
@@ -54,7 +54,7 @@ target/x86_64-unknown-linux-musl/release/afterfetch
 
 ## Contributing
 
-There is no remote yet. The house rules are in [AGENTS.md](AGENTS.md); run `make check` before every commit.
+Issues and pull requests are welcome. The house rules are in [AGENTS.md](AGENTS.md); run the checks it lists before opening a pull request.
 
 ## Part of Liminal HQ Labs
 
