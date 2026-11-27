@@ -14,6 +14,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "afterfetch-preview"
+version = "0.1.0"
+dependencies = [
+ "afterfetch-art",
+ "afterfetch-core",
+]
+
+[[package]]
 name = "afterfetch-unix"
 version = "0.1.0"
 dependencies = [

@@ -1,0 +1,29 @@
+# Afterfetch preview: a host-only tool that draws what afterfetch looks like on any supported system, from sample facts.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+[package]
+name = "afterfetch-preview"
+description = "Afterfetch preview: a host-only tool that draws what afterfetch looks like on any supported system"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+
+[lib]
+name = "afterfetch_preview"
+path = "src/lib.rs"
+
+[[bin]]
+name = "afterfetch-preview"
+path = "src/main.rs"
+
+[dependencies]
+afterfetch-core = { path = "../afterfetch-core" }
+afterfetch-art = { path = "../afterfetch-art" }
+
+[lints]
+workspace = true

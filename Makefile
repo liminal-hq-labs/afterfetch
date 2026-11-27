@@ -6,6 +6,7 @@
 export CARGO_BUILD_JOBS ?= 4
 
 .PHONY: check check-fast headers fmt clippy test deny art art-check test-art clippy-unix build-unix check-unix smoke-linux-native repro-unix
+.PHONY: preview sheet
 .PHONY: fmt-win32 clippy-win32 test-win32 build-win32 check-win32 smoke-wine repro-win32
 
 UNIX_TARGETS := x86_64-unknown-linux-musl i586-unknown-linux-musl
@@ -79,3 +80,18 @@ smoke-wine: build-win32
 
 repro-win32:
 	bash scripts/repro-win32.sh
+
+# Preview (AF-D49): what afterfetch looks like on any supported system, from sample facts. Host only; never part of a size gate or a
+# release. `make preview SYSTEM=macos COLOUR=256 WIDTH=100` prints one system; `make sheet` writes the contact sheet of the eight logos.
+SYSTEM ?= linux
+COLOUR ?= truecolour
+WIDTH ?= 80
+SHEET ?= target/preview/contact-sheet.png
+
+preview:
+	cargo run -q -p afterfetch-preview --locked -- --system $(SYSTEM) --colour $(COLOUR) --width $(WIDTH) --format ansi
+
+sheet:
+	mkdir -p $(dir $(SHEET))
+	cargo run -q -p afterfetch-preview --locked -- --sheet $(SHEET) --colour $(COLOUR) --width $(WIDTH)
+	@echo "wrote $(SHEET)"
