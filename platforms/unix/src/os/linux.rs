@@ -100,8 +100,9 @@ fn close(fd: i32) {
 	call(Sys::Close, fd as usize, 0, 0);
 }
 
-/// Reads the file at `path` (NUL-terminated) in chunks, passing each line to `handle`. False when it cannot be opened.
-fn read_lines(path: &[u8], handle: &mut impl FnMut(&[u8])) -> bool {
+/// Reads the file at `path` (NUL-terminated) in chunks, passing each line to `handle`. False when it cannot be opened. The handler is a
+/// trait object so the line feed is compiled once, not once per caller.
+fn read_lines(path: &[u8], mut handle: &mut dyn FnMut(&[u8])) -> bool {
 	let Some(fd) = open(path) else { return false };
 	let mut chunk = [0u8; 1024];
 	let mut feed = LineFeed::<192>::new();
@@ -110,9 +111,9 @@ fn read_lines(path: &[u8], handle: &mut impl FnMut(&[u8])) -> bool {
 		if count == 0 {
 			break;
 		}
-		feed.feed(&chunk[..count], handle);
+		feed.feed(&chunk[..count], &mut handle);
 	}
-	feed.finish(handle);
+	feed.finish(&mut handle);
 	close(fd);
 	true
 }

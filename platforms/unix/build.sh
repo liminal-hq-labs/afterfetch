@@ -39,6 +39,16 @@ case "$target" in
 arm-* | armv7-*) flags+=(-C target-feature=+thumb-mode) ;;
 esac
 
+# MIPS is tier 3: there is no prebuilt standard library, so `core` and `compiler_builtins` are built from the pinned toolchain's own source.
+# `RUSTC_BOOTSTRAP=1` allows the unstable flags on 1.98.0 without a nightly toolchain (AF-D22).
+cargo_extra=()
+case "$target" in
+mips-* | mipsel-*)
+	export RUSTC_BOOTSTRAP=1
+	cargo_extra+=(-Zbuild-std=core,compiler_builtins)
+	;;
+esac
+
 export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-4}"
 export CARGO_ENCODED_RUSTFLAGS
 CARGO_ENCODED_RUSTFLAGS="$(printf '%s\x1f' "${flags[@]}")"
@@ -46,7 +56,7 @@ CARGO_ENCODED_RUSTFLAGS="${CARGO_ENCODED_RUSTFLAGS%$'\x1f'}"
 
 cd "$root"
 case "$action" in
-build) cargo build --release --locked -p afterfetch-unix --target "$target" ;;
-clippy) cargo clippy --release --locked -p afterfetch-unix --target "$target" -- -D warnings ;;
+build) cargo build --release --locked "${cargo_extra[@]}" -p afterfetch-unix --target "$target" ;;
+clippy) cargo clippy --release --locked "${cargo_extra[@]}" -p afterfetch-unix --target "$target" -- -D warnings ;;
 *) echo "unknown action: $action" >&2; exit 2 ;;
 esac

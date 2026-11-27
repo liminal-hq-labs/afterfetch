@@ -6,6 +6,8 @@
 
 #![cfg_attr(raw_linux, no_std)]
 #![cfg_attr(raw_linux, no_main)]
+// MIPS inline assembly is still experimental; the build uses a nightly-capable compiler for it (AF-D22).
+#![cfg_attr(target_arch = "mips", feature(asm_experimental_arch))]
 
 #[cfg(raw_linux)]
 mod arch;
