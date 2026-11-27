@@ -8,12 +8,13 @@ export CARGO_BUILD_JOBS ?= 4
 .PHONY: check check-fast headers fmt clippy test deny art art-check test-art clippy-unix build-unix check-unix smoke-linux-native smoke-freebsd smoke-macos repro-unix
 .PHONY: preview sheet
 .PHONY: fmt-win32 clippy-win32 test-win32 build-win32 check-win32 smoke-wine repro-win32
+.PHONY: fmt-dos clippy-dos test-dos build-dos check-dos smoke-dos repro-dos
 
 UNIX_TARGETS := x86_64-unknown-linux-musl i586-unknown-linux-musl aarch64-unknown-linux-musl armv7-unknown-linux-musleabihf arm-unknown-linux-musleabihf mips-unknown-linux-musl mipsel-unknown-linux-musl riscv64gc-unknown-linux-musl powerpc64le-unknown-linux-musl x86_64-unknown-freebsd aarch64-unknown-freebsd x86_64-apple-darwin aarch64-apple-darwin
 WIN32_ARCHES := i586 x86_64 aarch64
 
 # Every later work package adds its builds, size checks and smokes to `check`.
-check: check-fast deny clippy-unix build-unix check-unix smoke-linux-native smoke-freebsd repro-unix fmt-win32 clippy-win32 test-win32 build-win32 check-win32 smoke-wine repro-win32
+check: check-fast deny clippy-unix build-unix check-unix smoke-linux-native smoke-freebsd repro-unix fmt-win32 clippy-win32 test-win32 build-win32 check-win32 smoke-wine repro-win32 fmt-dos clippy-dos test-dos build-dos check-dos smoke-dos repro-dos
 
 check-fast: headers fmt clippy test test-art art-check
 
@@ -89,6 +90,31 @@ smoke-wine: build-win32
 
 repro-win32:
 	bash scripts/repro-win32.sh
+
+# DOS (AF-D57): its own workspace over the shared crates, like Win32. `build-dos` fetches the DOS tools (DOSBox Staging and CWSDPMI) into
+# ~/.cache/afterfetch/dos-vendor once, then builds AFETCH.EXE; `smoke-dos` runs it under headless DOSBox; `repro-dos` builds it in three directories.
+fmt-dos:
+	cd platforms/dos && cargo fmt --all -- --check
+
+clippy-dos:
+	bash platforms/dos/build.sh clippy
+
+test-dos:
+	cd platforms/dos && cargo nextest run --lib --locked --no-tests=pass --target $$(rustc -vV | sed -n 's/^host: //p')
+
+build-dos:
+	bash platforms/dos/tools/fetch-tools.sh
+	bash platforms/dos/build.sh
+
+check-dos: build-dos
+	bash platforms/dos/check.sh
+
+smoke-dos: build-dos
+	bash scripts/smoke/dos.sh
+
+repro-dos:
+	bash platforms/dos/tools/fetch-tools.sh
+	bash scripts/repro-dos.sh
 
 # Preview (AF-D50): what afterfetch looks like on any supported system, from sample facts. Host only; never part of a size gate or a
 # release. `make preview SYSTEM=macos COLOUR=256 WIDTH=100` prints one system; `make sheet` writes the contact sheet of the eight logos.

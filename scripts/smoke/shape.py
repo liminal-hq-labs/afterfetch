@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 # Checks the shape of afterfetch's output without comparing values, which differ on every machine. Usage:
-#   shape.py plain <binary> <labels file> [--runner <emulator>] [--windows [--golden <file>]]
+#   shape.py plain <binary> <labels file> [--runner <emulator>] [--windows [--golden <file>] | --dos]
 #   shape.py colour <capture file> <none|16|256|truecolour>
 # `--windows`: CR LF line ends, no desktop row, no escapes on a pipe at any depth; `--golden` compares the win32 logo's columns.
+# `--dos`: no uptime, no escapes on a pipe at any depth, a display row allowed; the runner has already turned DOS line ends into plain ones.
 # (c) Copyright 2026 Liminal HQ, Scott Morris
 # SPDX-License-Identifier: Apache-2.0 OR MIT
 # A labels file lists one label per line in print order. A trailing `?` marks a label that may be absent.
@@ -53,6 +54,7 @@ def read_labels(path):
 
 
 WINDOWS = False
+DOS = False
 LOGO_COLUMNS = 42
 LOGO_ROWS = 12
 
@@ -138,7 +140,8 @@ def check_plain(command, labels_path, golden_path=None):
 	for key in JSON_NUMBERS:
 		value = values[key]
 		expect(value is None or (isinstance(value, int) and not isinstance(value, bool) and value >= 0), f"--json {key} is {value!r}")
-	expect(values["uptime_seconds"] is not None, "--json has no uptime_seconds")
+	if not DOS:
+		expect(values["uptime_seconds"] is not None, "--json has no uptime_seconds")
 	expect(values["memory_total_bytes"] and values["memory_available_bytes"] <= values["memory_total_bytes"], "--json memory numbers")
 	expect(values["arch"], "--json has no arch")
 	expect(values["target"] and re.fullmatch(r"[a-z0-9]+-[a-z0-9_]+", values["target"]), f"--json target {values['target']!r}")
@@ -154,8 +157,12 @@ def check_plain(command, labels_path, golden_path=None):
 			host_kib = int(next(line for line in meminfo if line.startswith("MemTotal:")).split()[1])
 		if host_kib > 6 * 1024 * 1024:
 			expect(values["memory_total_bytes"] > 4294967295, f"memory_total_bytes {values['memory_total_bytes']} is capped at 4 GiB")
-	else:
+	elif not DOS:
 		expect(values["display"] is None, "a console program reported a display")
+	if DOS:
+		expect(values["uptime"] is None and values["terminal"] is None and values["desktop"] is None, "DOS reported a fact it cannot know")
+		expect(values["cpu"] and values["memory_total_bytes"], "DOS reported no CPU or memory")
+		expect(values["target"] == "dos-i386", f"--json target {values['target']!r}")
 	expect(values["resources"] is None, "a Windows 3.1 fact on Unix")
 
 	version = run(command + ["--version"])
@@ -163,10 +170,11 @@ def check_plain(command, labels_path, golden_path=None):
 	expect(version.stdout.decode("ascii").rstrip().endswith(f"({values['target']})"), f"--version {version.stdout!r} does not name the JSON target")
 	expect(run(command + ["--help"]).returncode == 0, "--help")
 	bad = run(command + ["--no-such-option"])
-	expect(bad.returncode == 2 and bad.stdout == b"" and bad.stderr, "a bad option gives exit 2 and a message on stderr")
+	# DOS has no way to capture standard error under the harness, so there only the exit code and the empty standard output are checked.
+	expect(bad.returncode == 2 and bad.stdout == b"" and (bad.stderr or DOS), "a bad option gives exit 2 and a message on stderr")
 
-	if WINDOWS:
-		# A pipe never gets escape sequences from the Win32 program, whatever depth is asked for (the console path is attributes).
+	if WINDOWS or DOS:
+		# A pipe never gets escape sequences from the Win32 or the DOS program, whatever depth is asked for (the console path is attributes).
 		for depth in ("16", "256", "truecolour", "mono"):
 			asked = run(command + ["--colour", depth])
 			expect(b"\x1b" not in asked.stdout, f"--colour {depth} wrote an escape sequence to a pipe")
@@ -217,8 +225,9 @@ def check_colour(capture_path, depth):
 def main(argv):
 	try:
 		if len(argv) >= 4 and argv[1] == "plain":
-			global WINDOWS
+			global WINDOWS, DOS
 			WINDOWS = "--windows" in argv
+			DOS = "--dos" in argv
 			golden = argv[argv.index("--golden") + 1] if "--golden" in argv else None
 			command = argv[2:3]
 			if "--runner" in argv:

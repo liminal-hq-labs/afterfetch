@@ -1,0 +1,59 @@
+# The DOS shell for afterfetch: a 32-bit protected-mode program for a 386 and later, behind CWSDPMI's stub. Its own workspace, so the
+# build-std flags and the custom target never reach the host build.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+[workspace]
+resolver = "3"
+members = ["."]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0 OR MIT"
+rust-version = "1.98.0"
+repository = "https://github.com/liminal-hq-labs/afterfetch"
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+
+[package]
+name = "afterfetch-dos"
+description = "Afterfetch for MS-DOS and compatibles: a no-C-library, no-heap protected-mode program over INT 21h, BIOS and DPMI"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0 OR MIT"
+rust-version = "1.98.0"
+repository = "https://github.com/liminal-hq-labs/afterfetch"
+publish = false
+
+[lib]
+name = "afterfetch_dos"
+path = "src/lib.rs"
+
+[[bin]]
+name = "afetch"
+path = "src/main.rs"
+test = false
+bench = false
+
+[dependencies]
+afterfetch-core = { path = "crates/afterfetch-core" }
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+
+[profile.release]
+panic = "abort"
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+debug = 0
