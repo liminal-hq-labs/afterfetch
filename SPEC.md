@@ -91,7 +91,7 @@ The output is, in order: the **title** (`user@host`, or whichever half exists; l
 
 **Value formats.** Uptime is `2d 4h 17m`. Memory is `387 MB free of 511 MB`, switching to `12.4 GB free of 15.6 GB` once the total reaches 4 GiB. Display is `1024 x 768, 32-bit` (the depth is left off when unknown). Desktop is the platform's own name for it, as given (`GNOME`, `KDE`, `ubuntu:GNOME`). Terminal is `xterm-256color, 120 x 30` (the size is left off when unknown). CPU is the brand or model text with runs of spaces collapsed, then the core count in brackets (`(8 cores)`) when more than one core is known. Shell is the interpreter's file name, lower-cased on DOS and Windows. Resources is `72% free`.
 
-**Architecture** appears in the OS row on every platform, from `uname().machine`, `hw.machine_arch`, `GetSystemInfo`, or the build's own `target_arch` as the last resort. Its name is one of `x86`, `x86_64`, `aarch64`, `arm`, `mips`, `mipsel`, `mips64el`, `riscv64`, `powerpc64le`. The mapping of the system's own name to this list is planned (AF-D44): today the Linux build prints `uname().machine` as the kernel gives it (`x86_64`, or `i686` under `qemu-i386-static`). The form is `<os> (<arch>)` (`Debian GNU/Linux 13 (aarch64)`), except on Win32, which keeps the ReactOS form `<product> <release>-x86` for a known release on x86 so the ReactOS image prints what it prints today (`ReactOS 0.4.16-x86`).
+**Architecture** appears in the OS row on every platform, from `uname().machine`, `hw.machine_arch`, `GetSystemInfo`, or the build's own `target_arch` as the last resort. A system's own name is printed as it gives it (`x86_64`, `i686`, `aarch64`, `armv7l`, `mips`), with no mapping to a list (AF-D44). The form is `<os> (<arch>)` (`Debian GNU/Linux 13 (aarch64)`), except on Win32, which keeps the ReactOS form `<product> <release>-x86` for a known release on x86 so the ReactOS image prints what it prints today (`ReactOS 0.4.16-x86`).
 
 ### What each platform reports
 
@@ -250,9 +250,10 @@ Every release binary must fit its budget; `scripts/check-sizes.sh` reads `sizes.
 
 | Target | Budget |
 |---|---|
-| Win32 i586 | 16 KiB |
+| Win32 i586 | 24 KiB (AF-D47) |
 | Win32 x86_64, ARM64 | 20 KiB |
-| Linux, FreeBSD (any arch) | 24 KiB |
+| Linux x86_64 and i586 | 32 KiB (AF-D47) |
+| FreeBSD (any arch) | 24 KiB |
 | macOS (each arch) | 64 KiB |
 | DOS `AFETCH.EXE` | 64 KiB, CWSDPMI stub included |
 | Windows 3.1 `AFETCHW.EXE` | 24 KiB file; code segment `MAIN` 20,000 bytes; DGROUP 16 KiB |

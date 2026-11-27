@@ -6,7 +6,7 @@ A static program with no C library, built from raw system calls. Linux x86_64 an
 
 ```sh
 platforms/unix/build.sh x86_64-unknown-linux-musl    # or i586-unknown-linux-musl; add `clippy` to lint instead
-platforms/unix/check.sh x86_64-unknown-linux-musl    # machine, static, no PT_INTERP, no DT_NEEDED, 24 KiB budget, system call list
+platforms/unix/check.sh x86_64-unknown-linux-musl    # machine, static, no PT_INTERP, no DT_NEEDED, 32 KiB budget, system call list
 bash scripts/smoke/linux-native.sh                   # shape, --json and the colour depths from a pseudo-terminal
 bash scripts/repro-unix.sh                           # two builds in two directories, compared byte for byte
 ```

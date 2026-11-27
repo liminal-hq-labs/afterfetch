@@ -6,7 +6,7 @@ A console program for Windows 95 and later and ReactOS, with no C runtime: `no_s
 
 ```sh
 platforms/win32/build.sh i586            # build-std for a Pentium, rust-lld as lld-link; add `clippy` to lint instead
-platforms/win32/check.sh                 # PE structure, imports, Pentium scan, 16 KiB budget
+platforms/win32/check.sh                 # PE structure, imports, Pentium scan, 24 KiB budget
 bash scripts/smoke/wine.sh               # plain output, --json, the golden logo and the console attributes, under Wine on its own Xvfb
 bash scripts/repro-win32.sh              # two builds in two directories, compared byte for byte
 (cd platforms/win32 && cargo nextest run --lib --target x86_64-unknown-linux-gnu)    # the host tests
@@ -31,7 +31,7 @@ User and host from `GetUserNameA` and `GetComputerNameA`; the OS from the regist
 
 ## Notes for the x86_64 and ARM64 builds
 
-- The 16 KiB budget has about 500 bytes of room. The stack probe, the 64-bit division helpers (nothing calls them, but `compiler_builtins` names them, so the linker needs them) and the registry code are the obvious places to look if a feature needs more.
+- The 24 KiB budget (AF-D47) holds the eight logos. The stack probe, the 64-bit division helpers (nothing calls them, but `compiler_builtins` names them, so the linker needs them) and the registry code are the obvious places to look if a feature needs more.
 - `/MERGE:.data=.rdata` is for the Pentium build, which has no writable data. A mutable static would fault, so `tools/check-pe.sh` insists on the two sections `.text` and `.rdata`.
 - `GlobalMemoryStatus` reports at most 4 GiB; the 64-bit builds should use `GlobalMemoryStatusEx` through `GetProcAddress`, and `GetTickCount64` the same way, with the `imports.allow` list kept to what Windows 95 exports.
 - The environment is read once for the four names the program uses (`NO_COLOR`, `CLICOLOR_FORCE`, `FORCE_COLOR`, `COMSPEC`), because Windows 95 has no call that returns the whole block. A fact that needs another variable adds it to `VARIABLES` in `os.rs`.

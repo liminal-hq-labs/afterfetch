@@ -8,7 +8,7 @@ set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 exe="${1:-$here/dist/afterfetch.exe}"
-budget=16384
+budget=24576
 
 bash "$here/tools/check-pe.sh" "$exe"
 bash "$here/tools/check-imports.sh" "$exe"

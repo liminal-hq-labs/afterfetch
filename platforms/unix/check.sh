@@ -11,7 +11,7 @@ target="${1:?usage: check.sh <target> [binary]}"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 root="$(cd "$here/../.." && pwd)"
 binary="${2:-$root/target/$target/release/afterfetch}"
-budget=24576
+budget=32768
 
 case "$target" in
 x86_64-unknown-linux-musl) class="ELF64" machine="Advanced Micro Devices X86-64" ;;
