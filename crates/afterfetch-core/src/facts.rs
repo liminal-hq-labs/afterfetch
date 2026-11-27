@@ -18,6 +18,8 @@ pub enum FactKey {
 	Cpu,
 	Memory,
 	Display,
+	/// The desktop environment (`GNOME`), where the platform has one and says so.
+	Desktop,
 	Terminal,
 	Shell,
 	/// Windows 3.1's free system resources.
@@ -25,7 +27,7 @@ pub enum FactKey {
 }
 
 /// How many kinds of fact there are.
-pub const ROW_COUNT: usize = 10;
+pub const ROW_COUNT: usize = 11;
 
 impl FactKey {
 	/// Every key, in print order.
@@ -37,6 +39,7 @@ impl FactKey {
 		FactKey::Cpu,
 		FactKey::Memory,
 		FactKey::Display,
+		FactKey::Desktop,
 		FactKey::Terminal,
 		FactKey::Shell,
 		FactKey::Resources,
@@ -52,6 +55,7 @@ impl FactKey {
 			FactKey::Cpu => "CPU:",
 			FactKey::Memory => "Memory:",
 			FactKey::Display => "Display:",
+			FactKey::Desktop => "Desktop:",
 			FactKey::Terminal => "Terminal:",
 			FactKey::Shell => "Shell:",
 			FactKey::Resources => "Resources:",
@@ -65,7 +69,7 @@ impl FactKey {
 			FactKey::Kernel => Tone::Orange,
 			FactKey::Host | FactKey::Uptime => Tone::Coral,
 			FactKey::Cpu | FactKey::Memory => Tone::Rose,
-			FactKey::Display | FactKey::Terminal => Tone::Lilac,
+			FactKey::Display | FactKey::Desktop | FactKey::Terminal => Tone::Lilac,
 			FactKey::Shell => Tone::Violet,
 			FactKey::Resources => Tone::Periwinkle,
 		}
@@ -81,6 +85,7 @@ impl FactKey {
 			FactKey::Cpu => "cpu",
 			FactKey::Memory => "memory",
 			FactKey::Display => "display",
+			FactKey::Desktop => "desktop",
 			FactKey::Terminal => "terminal",
 			FactKey::Shell => "shell",
 			FactKey::Resources => "resources",

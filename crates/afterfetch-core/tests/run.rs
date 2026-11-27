@@ -16,7 +16,7 @@ fn json_has_the_stable_keys_and_no_logo() {
 		recorder.text,
 		"{\"user\":\"administrator\",\"hostname\":\"reactos\",\"os\":\"ReactOS 0.4.16-x86\",\"kernel\":\"NT 5.2.3790 SP3\",\
 		 \"model\":null,\"uptime\":\"0d 0h 1m\",\"cpu\":null,\"memory\":\"387 MB free of 511 MB\",\
-		 \"display\":\"1024 x 768, 32-bit\",\"terminal\":null,\"shell\":\"cmd.exe\",\"resources\":null}\n"
+		 \"display\":\"1024 x 768, 32-bit\",\"desktop\":null,\"terminal\":null,\"shell\":\"cmd.exe\",\"resources\":null}\n"
 	);
 	assert_eq!(recorder.styles, 0);
 }
@@ -27,7 +27,7 @@ fn json_of_a_platform_with_no_facts_is_all_null() {
 	platform.full = false;
 	let (_, recorder) = run_with(&mut platform, &["--json"]);
 	assert!(recorder.text.starts_with("{\"user\":null,\"hostname\":null,"));
-	assert_eq!(recorder.text.matches("null").count(), 12);
+	assert_eq!(recorder.text.matches("null").count(), 13);
 }
 
 #[test]

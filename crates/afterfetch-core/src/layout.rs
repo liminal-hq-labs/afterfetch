@@ -431,10 +431,10 @@ mod tests {
 			}
 		}
 		let (lines, _) = run_with(Depth::None, 80, true, &facts);
-		// Title, rule and ten facts start on row 1, so the picture is 13 lines.
-		assert_eq!(lines.len(), 13);
-		assert_eq!(lines[12].find("Resources:"), Some(INFO_COLUMN));
-		assert_eq!(lines[12].find("Resources: x"), Some(INFO_COLUMN));
+		// Title, rule and eleven facts start on row 1, so the picture is 14 lines.
+		assert_eq!(lines.len(), 14);
+		assert_eq!(lines[13].find("Resources:"), Some(INFO_COLUMN));
+		assert_eq!(lines[13].find("Resources: x"), Some(INFO_COLUMN));
 	}
 
 	#[test]

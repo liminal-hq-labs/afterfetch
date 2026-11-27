@@ -98,7 +98,7 @@ mod tests {
 		assert_eq!(
 			text,
 			"{\"user\":null,\"hostname\":null,\"os\":null,\"kernel\":null,\"model\":null,\"uptime\":null,\"cpu\":null,\
-			 \"memory\":null,\"display\":null,\"terminal\":null,\"shell\":null,\"resources\":null}\n"
+			 \"memory\":null,\"display\":null,\"desktop\":null,\"terminal\":null,\"shell\":null,\"resources\":null}\n"
 		);
 	}
 
