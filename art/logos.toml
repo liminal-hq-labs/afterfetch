@@ -36,7 +36,8 @@ other = "afterglow"
 
 # One entry per logo, in --logo list order. `tones` is the logo's palette in order: tone 1 of the .afl is the first
 # name, and so on (at most 15). It lists every tone the master or the ASCII form uses, and nothing else.
-# `status`: drawn (master and ASCII form exist), brief (docs/art.md has the brief; drawn in AF-WP16).
+# `status`: drawn (master and ASCII form exist). Every logo is drawn; umber and soot, which only `desk` uses, stay
+# provisional in the palette until the owner reviews it.
 
 [[logo]]
 name = "afterglow"
@@ -53,24 +54,26 @@ tones = ["gold", "amber", "orange", "peach", "coral", "rose"]
 [[logo]]
 name = "dos"
 systems = ["MS-DOS", "PC DOS", "FreeDOS", "DR-DOS"]
-status = "brief"
+status = "drawn"
 master = "masters/dos.svg"
 ascii = "ascii/dos.txt"
 width = 36
 height = 24
 ascii-width = 36
 ascii-rows = 12
+tones = ["gold", "orange", "coral", "rose"]
 
 [[logo]]
 name = "win16"
 systems = ["Windows 3.0", "Windows 3.1", "Windows for Workgroups 3.11"]
-status = "brief"
+status = "drawn"
 master = "masters/win16.svg"
 ascii = "ascii/win16.txt"
 width = 36
 height = 24
 ascii-width = 36
 ascii-rows = 12
+tones = ["gold", "orange", "coral", "rose", "cream", "slate", "night"]
 
 [[logo]]
 name = "win32"
@@ -90,43 +93,47 @@ tones = ["gold", "orange", "coral", "rose", "lilac", "violet", "periwinkle", "sl
 [[logo]]
 name = "linux"
 systems = ["Linux"]
-status = "brief"
+status = "drawn"
 master = "masters/linux.svg"
 ascii = "ascii/linux.txt"
 width = 36
 height = 24
 ascii-width = 36
 ascii-rows = 12
+tones = ["gold", "orange", "rose", "lilac", "violet", "cream"]
 
 [[logo]]
 name = "freebsd"
 systems = ["FreeBSD"]
-status = "brief"
+status = "drawn"
 master = "masters/freebsd.svg"
 ascii = "ascii/freebsd.txt"
 width = 36
 height = 24
 ascii-width = 36
 ascii-rows = 12
+tones = ["gold", "coral", "rose", "night"]
 
 [[logo]]
 name = "macos"
 systems = ["macOS"]
-status = "brief"
+status = "drawn"
 master = "masters/macos.svg"
 ascii = "ascii/macos.txt"
 width = 36
 height = 24
 ascii-width = 36
 ascii-rows = 12
+tones = ["gold", "amber", "orange", "peach", "coral", "rose", "cream"]
 
 [[logo]]
 name = "desk"
 systems = ["Desk OS, native", "Desk OS, hosted on DOS"]
-status = "brief"
+status = "drawn"
 master = "masters/desk.svg"
 ascii = "ascii/desk.txt"
 width = 36
 height = 24
 ascii-width = 36
 ascii-rows = 12
+tones = ["orange", "umber", "soot", "rose", "slate"]

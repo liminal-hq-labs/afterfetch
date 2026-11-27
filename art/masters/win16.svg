@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+win16 logo master: the Afterglow sun as a raised, bevelled button over a grid of tiles, for Windows 3.0 to 3.11
+
+(c) Copyright 2026 Liminal HQ, Scott Morris
+SPDX-License-Identifier: Apache-2.0 OR MIT
+
+Grid: 36 x 24 logo pixels (36 columns x 12 rows of half-block cells), 10 units each, drawn inside one scale(10) group so
+every coordinate below is a whole pixel. Fills are tone colours from art/palette/afterglow-dusk.toml only; nothing is
+antialiased, so rsvg-convert at 36 x 24 gives exactly one tone per pixel. docs/art.md has the rules.
+
+Morning. A whole disc of radius 7.45 centred at (18, 9), standing on the horizon, in gold (rows 2 to 5), orange (6 to 10)
+and coral (11 to 15). Like a Windows 3.1 push button it is raised: its rim pixels facing up and left are cream, the
+highlight, and those facing down and right are slate, the shadow; the rim on the other diagonal keeps its band. The rose
+horizon runs from x 1 to 34 on row 16. Below it, two rows of six night tiles (rows 18 and 22), 4 x 2 pixels with a cream top-left pixel,
+recall a Program Manager group with no icons in it. AFETCHW.EXE paints each pixel as a 4 x 4 square, so the one-pixel
+bevel shows; in a terminal it is a thin lit edge.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="240" viewBox="0 0 360 240" shape-rendering="crispEdges">
+<title>win16</title>
+<g transform="scale(10)">
+<g id="sun">
+<path id="gold" fill="#ffd08e" d="M14 3h9v1h-9ZM13 4h11v1h-11ZM12 5h12v1h-12Z"/>
+<path id="orange" fill="#ffaa40" d="M12 6h12v5h-12Z"/>
+<path id="coral" fill="#f995a6" d="M12 11h12v2h-12ZM12 13h11v1h-11ZM13 14h9v1h-9Z"/>
+</g>
+<g id="bevel">
+<path id="highlight" fill="#fff7ea" d="M14 2h8v1h-8ZM13 3h1v1h-1ZM12 4h1v1h-1ZM11 5h1v8h-1Z"/>
+<path id="shadow" fill="#7c8796" d="M24 5h1v8h-1ZM23 13h1v1h-1ZM22 14h1v1h-1ZM14 15h8v1h-8Z"/>
+</g>
+<path id="horizon" fill="#f43f5e" d="M1 16h34v1h-34Z"/>
+<g id="tiles">
+<path id="tile" fill="#4a4580" d="M2 18h3v1h-3ZM8 18h3v1h-3ZM14 18h3v1h-3ZM20 18h3v1h-3ZM26 18h3v1h-3ZM32 18h3v1h-3ZM1 19h4v1h-4ZM7 19h4v1h-4ZM13 19h4v1h-4ZM19 19h4v1h-4ZM25 19h4v1h-4ZM31 19h4v1h-4ZM2 22h3v1h-3ZM8 22h3v1h-3ZM14 22h3v1h-3ZM20 22h3v1h-3ZM26 22h3v1h-3ZM32 22h3v1h-3ZM1 23h4v1h-4ZM7 23h4v1h-4ZM13 23h4v1h-4ZM19 23h4v1h-4ZM25 23h4v1h-4ZM31 23h4v1h-4Z"/>
+<path id="tile-light" fill="#fff7ea" d="M1 18h1v1h-1ZM7 18h1v1h-1ZM13 18h1v1h-1ZM19 18h1v1h-1ZM25 18h1v1h-1ZM31 18h1v1h-1ZM1 22h1v1h-1ZM7 22h1v1h-1ZM13 22h1v1h-1ZM19 22h1v1h-1ZM25 22h1v1h-1ZM31 22h1v1h-1Z"/>
+</g>
+</g>
+</svg>

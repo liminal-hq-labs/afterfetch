@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+desk logo master: the Afterglow sun on Desk's Void wearing its stepped halo, over its stepped Horizon, for Desk
+
+(c) Copyright 2026 Liminal HQ, Scott Morris
+SPDX-License-Identifier: Apache-2.0 OR MIT
+
+Grid: 36 x 24 logo pixels (36 columns x 12 rows of half-block cells), 10 units each, drawn inside one scale(10) group so
+every coordinate below is a whole pixel. Fills are tone colours from art/palette/afterglow-dusk.toml only; nothing is
+antialiased, so rsvg-convert at 36 x 24 gives exactly one tone per pixel. docs/art.md has the rules.
+
+After dark. Drawn only from Desk's 16-colour set (docs/PALETTE.md slots 0 to 15 at Desk 4a021a7): orange is slot 8,
+umber 9, soot 10, rose 11, slate 5; the Void, slot 0, is the transparent sky. The sun is an orange disc of radius 7.4 half
+set on the horizon at (18, 16). A one-pixel ring of Void separates it from Desk's stepped halo, three one-pixel rings in
+orange, umber and soot, the border Desk's focused window wears. The rose horizon runs from x 1 to 34 on row 16; under it,
+Desk's stepped Horizon as three flat bands of two rows each, orange, umber and soot from the top, instead of a gradient.
+Two slate stars, as in Desk's hero. At 16 terminal colours umber shows slate and soot drops out, so the halo and the
+Horizon both fade from orange to grey to nothing.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="240" viewBox="0 0 360 240" shape-rendering="crispEdges">
+<title>desk</title>
+<g transform="scale(10)">
+<path id="star" fill="#7c8796" d="M4 3h1v1h-1ZM31 5h1v1h-1Z"/>
+<path id="disc" fill="#ffaa40" d="M14 9h8v1h-8ZM13 10h10v1h-10ZM12 11h12v1h-12ZM11 12h14v4h-14Z"/>
+<g id="halo">
+<path id="ring-1" fill="#ffaa40" d="M12 7h12v1h-12ZM11 8h2v1h-2ZM23 8h2v1h-2ZM10 9h2v1h-2ZM24 9h2v1h-2ZM9 10h2v1h-2ZM25 10h2v1h-2ZM9 11h1v5h-1ZM26 11h1v5h-1Z"/>
+<path id="ring-2" fill="#7d5422" d="M11 6h14v1h-14ZM10 7h2v1h-2ZM24 7h2v1h-2ZM9 8h2v1h-2ZM25 8h2v1h-2ZM8 9h2v1h-2ZM26 9h2v1h-2ZM8 10h1v6h-1ZM27 10h1v6h-1Z"/>
+<path id="ring-3" fill="#372612" d="M10 5h16v1h-16ZM9 6h2v1h-2ZM25 6h2v1h-2ZM8 7h2v1h-2ZM26 7h2v1h-2ZM7 8h2v1h-2ZM27 8h2v1h-2ZM7 9h1v7h-1ZM28 9h1v7h-1Z"/>
+</g>
+<path id="horizon" fill="#f43f5e" d="M1 16h34v1h-34Z"/>
+<g id="stepped-horizon">
+<path id="band-top" fill="#ffaa40" d="M1 17h34v2h-34Z"/>
+<path id="band-middle" fill="#7d5422" d="M1 19h34v2h-34Z"/>
+<path id="band-bottom" fill="#372612" d="M1 21h34v2h-34Z"/>
+</g>
+</g>
+</svg>

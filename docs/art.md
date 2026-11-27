@@ -11,7 +11,6 @@ Every afterfetch logo is the same Afterglow sun. What changes from system to sys
 - [The sun at each depth](#the-sun-at-each-depth)
 - [Forms](#forms)
 - [The drawn logos](#the-drawn-logos)
-- [Briefs for the other logos](#briefs-for-the-other-logos)
 - [Reviewing a master](#reviewing-a-master)
 
 ## The constants
@@ -53,8 +52,8 @@ The logos walk through one day, so each system gets a light of its own and the s
 
 | Logo | Systems | Time of day | Horizon and drawing |
 |---|---|---|---|
-| `dos` | MS-DOS, PC DOS, FreeDOS, DR-DOS | dawn | the sun rising through CRT scanlines, chunky 2 × 1 pixels, only the 16 VGA colours |
-| `win16` | Windows 3.0, 3.1, 3.11 | morning | a bevelled sun, raised like a button, over a grid of tiles |
+| `dos` | MS-DOS, PC DOS, FreeDOS, DR-DOS | dawn | the sun rising through CRT scanlines in chunky square steps, only colours that land on the VGA set |
+| `win16` | Windows 3.0, 3.1, 3.11 | morning | a bevelled sun, raised like a button, over two rows of Program Manager tiles |
 | `macos` | macOS | golden hour | a soft glass sun over still water, one reflection |
 | `afterglow` | anything else | sunset | the brand sun half set on a bare rose line |
 | `win32` | Windows 95 to 11, ReactOS | dusk | the sun over water, ripples fading from lilac to slate |
@@ -81,14 +80,16 @@ Every colour a logo may use is a **tone** in `art/palette/afterglow-dusk.toml`: 
 | 11 | cream | `w` | `#fff7ea` | 15 | 15 | 231 | bright | highlights |
 | 12 | night | `n` | `#4a4580` | 8 | 8 | 61 | dim | silhouettes |
 | 13 | teal | `t` | `#62c6d6` | 3 | 6 | 116 | normal | RISC-V accent |
-| 14 | umber | `u` | `#7d5422` | 6 | 3 | 94 | dim | Desk halo, middle |
+| 14 | umber | `u` | `#7d5422` | 8 | 8 | 94 | dim | Desk halo, middle |
 | 15 | soot | `d` | `#372612` | — | — | 235 | — | Desk halo, outer |
 
 - **Console** is the attribute index on Win32 consoles, DOS and Windows 3.1 at 16 colours. The eight tones of the reactos-liminal afterfetch keep its indexes exactly (gold 14, orange 6, coral 12, rose 4, lilac 13, violet 5, periwinkle 1, slate 8), so on the ReactOS image every one is its Afterglow colour with ΔE 0, and the generator's test holds them there.
 - **ANSI** is the same colour in SGR order, which swaps red and blue: it is always the console index with bits 0 and 2 exchanged. On a terminal using the Afterglow terminal palette those slots are Afterglow's own colours (bright red is coral exactly, red is rose exactly).
-- **256** is the xterm cube or grey ramp, never 0 to 15, which belong to the user's theme. Most are the nearest entry; amber (221, ΔE 18.7) is not, because its nearest, 215, is orange's, and five distinct sun bands matter more than the closest match.
-- **Night** has no honest 16-colour match: the nearest console colour is the background. It falls back to slate by role. **Soot** has no 16-colour entry at all and is dropped (drawn transparent) at 16 colours and in mono. **Umber** and **soot** are provisional until the `desk` master is drawn.
+- **256** is the xterm cube or grey ramp, never 0 to 15, which belong to the user's theme. Every tone takes its nearest entry, with one exception, below.
+- **Night** has no honest 16-colour match: the nearest console colour is the background. It falls back to slate by role. **Umber** is almost equally far from orange, gold and slate on the Dusk console (ΔE 48.4, 47.2, 49.1) and nearest grey on the Afterglow terminal, so it takes slate (console 8) by role: the Desk halo and Horizon then dim outward, orange to grey to nothing, instead of doubling the orange ring. **Soot** has no 16-colour entry at all and is dropped (drawn transparent) at 16 colours and in mono. **Umber** and **soot** are used only by `desk` and stay provisional until the owner reviews it.
 - **Mono** is bold, plain or faint on Unix and the intensity bit on DOS and MDA: the crown and body are bright, so a green-screen still shows a sun.
+
+**Exception: amber at 256 colours.** Amber's xterm entry is 221 (`#ffd75f`, ΔE 18.7), not its nearest, 215 (`#ffaf5f`), because 215 is orange's own entry and the two sun bands would merge into one. Five distinct bands at 256 colours matter more than the closest match, so amber deliberately breaks the nearest-colour rule; it is the only tone that does, and the palette file says so in its role.
 
 The fact labels walk down the same sunset (gold, orange, coral, rose, lilac, violet, periwinkle), as they do in the ReactOS build, and the title rule takes the architecture's accent (`[arch-accent]` in the palette: x86 gold, ARM periwinkle, MIPS violet, RISC-V teal, PowerPC coral).
 
@@ -120,6 +121,8 @@ The same blob draws three ways (details in [logo-format.md](logo-format.md#depth
 - **ASCII** — the ASCII form as plain text, for pipes, `--plain` and `--colour never`.
 
 ## The drawn logos
+
+All eight are drawn, on the same grid and constants. Each section says what the picture is and why; the ASCII form is shown as it prints with `--plain`.
 
 ### `afterglow`
 
@@ -154,25 +157,111 @@ The reactos-liminal sunset, the picture the ReactOS image already shows, redrawn
                ~~~~~~~~~~~~~~
 ```
 
-## Briefs for the other logos
+### `dos`
 
-These are drawn in AF-WP16, on the same grid and constants. Each brief says what to draw; a brief may change when the master shows it should.
+Dawn, and the family's beginning. A disc of radius 18 centred well below the horizon, so only its cap has risen, drawn the way text-mode block graphics would: its edge moves only between cell rows and only by two columns, so every step is a square 2 × 1-cell chunk. Its upper half is CRT scanlines: pixel rows 7, 9 and 11 are left out, so the gold crown and the top of the orange body are thin upper half-cells that close up into a solid orange and coral foot. The rose horizon runs the full 36 columns, the sky is empty, and the tones are only gold, orange, coral and rose, which land on the stock VGA set honestly (yellow, brown, light red, red). The ASCII form draws the scanlines as `=`.
 
-**`dos` — dawn.** The sun rising, with only its upper half or less above the line, drawn in chunky square pixels two columns wide and one row high (one half-block cell is two pixels tall, so each chunk is a 2 × 1 block that looks square in a terminal). Horizontal CRT scanlines cut across the disc: every other pixel row of the sun is left out from about halfway up, so the sun dissolves into stripes towards the crown, which says text-mode monitor without any logo. Only gold, orange, coral and rose, the tones that land on the standard VGA set honestly; the sky stays empty. The ASCII form uses `=` for scanlines and `#` for the disc.
+```text
+            ============
+        ====================
+      ========================
+    ############################
+  ################################
+  ################################
+------------------------------------
+```
 
-**`win16` — morning.** A full disc sitting just on the horizon, drawn as a raised 3D button: a one-pixel cream highlight on its upper-left rim and a one-pixel slate shadow on its lower-right rim over the gold, orange and coral bands, the way Windows 3.1 bevels a push button. Below the line, two rows of small square tiles (night with a cream top-left pixel) recall a Program Manager group, with no icons in them. The Windows 3.1 program draws each pixel as a 4 × 4 square in a window, so this logo can use single-pixel detail that would be lost in a terminal.
+### `win16`
 
-**`linux` — night.** The sun almost set: only its upper third shows above the line, in gold and orange only. The rose horizon line ends on the right in a solid cream block, a cursor, with a short `>` shape of two rose pixels at its left end, so the horizon is a shell prompt. Above, a violet night sky as a few sparse violet and lilac pixels (two or three stars, one cream), no moon, no animal.
+Morning. A whole disc standing on the horizon, drawn as a raised Windows 3.1 push button: its rim facing up and left is cream, the highlight, and its rim facing down and right is slate, the shadow, around gold, orange and coral bands. At this size the stepped disc reads as a rounded button, which is the point. Below the line, two rows of six night tiles, each 4 × 2 pixels with a cream top-left pixel, recall a Program Manager group with no icons in it. `AFETCHW.EXE` paints each pixel as a 4 × 4 square, so the one-pixel bevel shows clearly there; in a terminal it is a lit edge. Night shows slate at 16 colours, so the tiles stay visible on navy and black. In the ASCII form the bevel is cream `/ | \` on the left and slate on the right, and the tiles are `[__]`.
 
-**`freebsd` — last light.** A deeper sun: coral and rose make up most of the disc, gold only a small core at the crown, nothing amber or peach, so it reads red-orange at every depth. A low ridge of night tone crosses in front of the lower part of the disc, its silhouette a gentle two-step rise, with the rose line along its foot. The red recalls the platform's colours without taking any shape from its marks: no horns, no ball, no trident.
+```text
+             .--------.
+            /##########\
+           |############|
+           |############|
+           |############|
+           |############|
+            \__________/
+ ----------------------------------
+ [__]  [__]  [__]  [__]  [__]  [__]
 
-**`macos` — golden hour.** A soft sun just above the line using every gradient step (gold, amber, orange, peach, coral), with a pale cream crescent on its upper left as a specular glint, as if the disc were glass. Below the rose line, a single soft reflection: a shorter, narrower echo of the lower bands, broken into two or three spans. At 256 colours and truecolour it uses all five bands; at 16 it falls back to a plain sun through a `PIXELS_LOW` picture rather than a muddy collapse. No apple, no window controls, no traffic lights.
+ [__]  [__]  [__]  [__]  [__]  [__]
+```
 
-**`desk` — after dark.** The sun on the Void (the terminal background, Desk's `#050507`), wearing Desk's stepped halo: three one-pixel rings around the disc in orange, umber and soot, the focused-window border of Desk's first window. Below it, Desk's stepped Horizon as three flat bands, soot, umber and orange from bottom to top, instead of a gradient, with the rose horizon line on top. Drawn only from Desk's 16-colour set plus rose, so it is the same at 4-bit and 8-bit and in Desk's own palette; no Desk wordmark and no window chrome. The umber and soot tones are reserved for it; at 16 console colours umber becomes orange and soot drops out, so the halo thins to its brightest ring, and the master decides whether that needs a `PIXELS_LOW` picture.
+### `macos`
+
+Golden hour. A whole disc just above the horizon in all five bands (gold, amber, orange, peach, coral), with a cream crescent inside its upper-left rim, a specular glint that makes the disc read as glass. Below the rose line, one soft reflection in still water: coral and peach right under the line, a gap, then orange, each row narrower than the disc and broken into two spans. At 16 colours amber and peach become orange, but the glint, the crown and the coral foot keep the sun round and lit, so the logo needs no `PIXELS_LOW` picture. In mono the glint merges with the bright crown and the sun still reads.
+
+```text
+               .::::.
+           .:##########:.
+          :##############:
+          :##############:
+          :##############:
+          :##############:
+           :############:
+            '##########'
+               '::::'
+  --------------------------------
+           ~~~~~ ~~~~~~~~
+             ~~~~ ~~~~~
+```
+
+### `freebsd`
+
+Last light. A deeper sun, half set: a small gold core at the crown, then coral, then rose for its whole lower half, with no amber, orange or peach, so it reads red-orange at every depth (light red and red on stock VGA). A low night ridge crosses in front of its foot, rising from the edges in two gentle steps, and the rose horizon runs the full width along the ridge's foot. The red recalls the platform's colours without taking any shape from its marks: no horns, no ball, no trident. The ridge is slate at 16 colours and dim in mono, so it stays a silhouette in front of the sun.
+
+```text
+              .:####:.
+           .:##########:.
+          :##############:
+        :##################:
+       :###/^^^^^^^^^^\####:
+____/^^^^^^^^^^^^^^^^^^^^^^^\_______
+------------------------------------
+```
+
+### `linux`
+
+Night. The sun has almost set: only its upper third shows, gold over orange. The horizon is a shell prompt: a rose `>` chevron at the left whose tip sits on the line, the rose line, and a cream block cursor one cell wide at the right, exactly the size a terminal draws it. Above, a violet night sky of four stars (lilac, violet, violet and one cream). No penguin and no moon.
+
+```text
+                             .
+      .
+
+           .             *
+
+             .:######:.
+          .:##########:.
+ \      :################:
+  > -------------------------- #
+ /
+```
+
+### `desk`
+
+After dark. The sun on Desk's Void wearing Desk's stepped halo, over Desk's stepped Horizon, drawn only from Desk's 16-colour set (`docs/PALETTE.md` at Desk `4a021a7`): orange is slot 8, umber 9, soot 10, rose 11 and slate 5, and the Void, slot 0, is the transparent sky. The orange disc is half set on the horizon; around it, a one-pixel ring of Void (the window's own dark edge) and then three one-pixel rings in orange, umber and soot. Each ring is the shape grown by one pixel in all eight directions, the way Desk inflates a window's box for the focused-window halo, so the rings step like Desk's rather than curving smoothly. Under the rose line, Desk's Horizon wallpaper as it is at 16 colours: three flat bands, orange, umber and soot from the top. Two slate stars as in Desk's hero. At 16 terminal colours umber is slate and soot drops out, so the halo and the bands both fade from orange to grey to nothing; in mono the halo is a bright ring inside a dim one. No wordmark and no window chrome.
+
+```text
+    .
+        .------------------.   .
+        |.----------------.|
+        ||.--------------.||
+        ||| .:########:. |||
+        ||| :##########: |||
+        ||| ############ |||
+ ----------------------------------
+ ==================================
+ ==================================
+ ==================================
+```
 
 ## Reviewing a master
 
-`python3 art/scripts/review_sheet.py` renders every drawn master into `~/Documents/Liminal HQ/Afterfetch/renders/`: `<logo>-<depth>.png` at 10 pixels per logo pixel for truecolour, 256, the Dusk console, the Afterglow terminal, stock VGA and mono, each on the background that kind of terminal has, and `afterfetch-logos.png`, a sheet of every logo at every depth beside its ASCII form. It fails on any fill that is not a tone. The cell-accurate previews and the blobs come from the generator, `art/scripts/afterfetch_art.py`.
+`python3 art/scripts/review_sheet.py` renders every drawn master into `~/Documents/Liminal HQ/Afterfetch/renders/`: `<logo>-<depth>.png` at 10 pixels per logo pixel for truecolour, 256, the Dusk console, the Afterglow terminal, stock VGA and mono, each on the background that kind of terminal has; `afterfetch-logos.png`, a sheet of every logo at every depth beside its ASCII form; and `afterfetch-family.png`, the eight side by side in the order of the day at truecolour, Dusk 16, stock VGA and mono, with their ASCII forms. It runs the checks below that a script can make, prints each logo's estimated `.afl` size and fails on any breach or a blob over budget. The cell-accurate previews and the blobs come from the generator, `art/scripts/afterfetch_art.py`.
+
+The blobs, as `make art` writes them ([logo-format.md](logo-format.md#size-budget)): `afterglow` 178, `dos` 157, `win16` 360, `win32` 328, `linux` 198, `freebsd` 179, `macos` 232 and `desk` 331 bytes, 1,963 in all against the 6,144-byte budget.
 
 Before a master lands, check that:
 

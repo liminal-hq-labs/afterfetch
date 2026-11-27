@@ -9,10 +9,16 @@
 #   python3 art/scripts/review_sheet.py [--out DIR] [LOGO ...]
 #
 # DIR defaults to "~/Documents/Liminal HQ/Afterfetch/renders". For every logo in art/logos.toml that has a master, it
-# writes <logo>-<depth>.png at 10 px per logo pixel (truecolour is the master itself), and afterfetch-logos.png, a sheet
-# with every depth beside the ASCII form, each on the background a terminal of that kind would have. A depth is drawn by
-# swapping each tone's rgb for the colour that depth shows (art/palette/afterglow-dusk.toml), which is what the program
-# does cell by cell. Any fill in a master that is not a tone's rgb is reported and fails the run.
+# writes <logo>-<depth>.png at 10 px per logo pixel (truecolour is the master itself); afterfetch-logos.png, a sheet
+# with every depth beside the ASCII form, each on the background a terminal of that kind would have; and
+# afterfetch-family.png, the logos side by side in the order of the day (docs/art.md), one row per depth. A depth is
+# drawn by swapping each tone's rgb for the colour that depth shows (art/palette/afterglow-dusk.toml), which is what the
+# program does cell by cell.
+#
+# It also checks each logo the way the generator will, and fails the run on any breach: every fill is a tone in the
+# logo's `tones` list; rsvg-convert at 36 x 24 gives only those tones and transparent; the ASCII form fits its size, is
+# ASCII, has a tone from the list on every drawn character and none on a space; and the estimated .afl blob (the layout
+# in docs/logo-format.md, with no PIXELS_LOW) is within the per-logo and total budgets. It prints each estimate.
 #
 # This is a review aid, not the generator: the .afl blobs, palette.rs and the cell-accurate previews come from
 # art/scripts/afterfetch_art.py.
@@ -25,6 +31,8 @@ import subprocess
 import sys
 import tempfile
 import tomllib
+import struct
+import zlib
 from pathlib import Path
 
 ART_DIR = Path(__file__).resolve().parent.parent
@@ -75,6 +83,154 @@ def depth_colours(palette, depth):
 			raise ValueError(depth)
 		mapping[design] = shown
 	return mapping
+
+
+# The logos in the order of the day they stand for (docs/art.md, "A day around the family").
+DAY_ORDER = ["dos", "win16", "macos", "afterglow", "win32", "freebsd", "linux", "desk"]
+FAMILY_DEPTHS = ["truecolour", "dusk16", "vga16", "mono"]
+
+
+def read_png(path):
+	"""Decode an 8-bit RGBA, non-interlaced PNG (what rsvg-convert writes) into rows of (r, g, b, a) tuples."""
+	data = path.read_bytes()
+	position = 8
+	compressed = b""
+	width = height = 0
+	while position < len(data):
+		length, kind = struct.unpack(">I4s", data[position : position + 8])
+		chunk = data[position + 8 : position + 8 + length]
+		if kind == b"IHDR":
+			width, height, bit_depth, colour_type, _, _, interlace = struct.unpack(">IIBBBBB", chunk)
+			if (bit_depth, colour_type, interlace) != (8, 6, 0):
+				raise ValueError(f"{path}: expected 8-bit RGBA without interlace")
+		elif kind == b"IDAT":
+			compressed += chunk
+		position += 12 + length
+	raw = zlib.decompress(compressed)
+	stride = width * 4
+	rows = []
+	previous = bytearray(stride)
+	offset = 0
+	for _ in range(height):
+		filter_type = raw[offset]
+		line = bytearray(raw[offset + 1 : offset + 1 + stride])
+		offset += 1 + stride
+		for index in range(stride):
+			left = line[index - 4] if index >= 4 else 0
+			above = previous[index]
+			upper_left = previous[index - 4] if index >= 4 else 0
+			if filter_type == 1:
+				line[index] = (line[index] + left) & 0xFF
+			elif filter_type == 2:
+				line[index] = (line[index] + above) & 0xFF
+			elif filter_type == 3:
+				line[index] = (line[index] + (left + above) // 2) & 0xFF
+			elif filter_type == 4:
+				estimate = left + above - upper_left
+				distances = (abs(estimate - left), abs(estimate - above), abs(estimate - upper_left))
+				predictor = (left, above, upper_left)[distances.index(min(distances))]
+				line[index] = (line[index] + predictor) & 0xFF
+		rows.append([tuple(line[index : index + 4]) for index in range(0, stride, 4)])
+		previous = line
+	return rows
+
+
+def run_bytes(indexes):
+	"""How many run bytes a row of palette indexes takes: one per run of up to 16 equal indexes."""
+	count = 0
+	position = 0
+	while position < len(indexes):
+		run = 1
+		while position + run < len(indexes) and indexes[position + run] == indexes[position] and run < 16:
+			run += 1
+		count += 1
+		position += run
+	return count
+
+
+def encoded_art_bytes(art):
+	"""Bytes of one ASCII row's art: a character, then a repeat byte for up to 128 more of the same."""
+	count = 0
+	position = 0
+	while position < len(art):
+		run = 1
+		while position + run < len(art) and art[position + run] == art[position] and run < 129:
+			run += 1
+		count += 1 if run == 1 else 2
+		position += run
+	return count
+
+
+def estimate_blob(pixel_rows, ascii_rows, tone_count):
+	"""The .afl size for a logo with no PIXELS_LOW: header, PIXELS section and ASCII section."""
+	header = 9 + tone_count
+	pixels = 3 + sum(run_bytes(row) for row in pixel_rows)
+	ascii_section = 3
+	for indexes in ascii_rows:
+		ascii_section += 1 + encoded_art_bytes(indexes[0]) + run_bytes(indexes[1])
+	return header + pixels + ascii_section
+
+
+def check_logo(logo, svg_text, palette, scratch_dir, limits):
+	"""Every check the generator will make of a master and its ASCII form; returns (failures, estimated blob bytes)."""
+	failures = []
+	name = logo["name"]
+	tones_by_name = {tone["name"]: tone for tone in palette["tone"]}
+	logo_tones = logo.get("tones", [])
+	unknown = [tone_name for tone_name in logo_tones if tone_name not in tones_by_name]
+	if unknown or not logo_tones:
+		return [f"{name}: tones list missing or names unknown tones {unknown}"], 0
+	rgb_to_index = {}
+	for index, tone_name in enumerate(logo_tones, start=1):
+		rgb_to_index[tones_by_name[tone_name]["rgb"].lower()] = index
+	for colour in FILL.findall(svg_text):
+		if colour.lower() not in rgb_to_index:
+			failures.append(f"{logo['master']}: fill {colour} is not a tone in the logo's tones list")
+
+	png_path = scratch_dir / f"{name}-grid.png"
+	subprocess.run(
+		["rsvg-convert", "--width", str(logo["width"]), "--height", str(logo["height"]), "--background-color", "none", "--output", str(png_path), str(ART_DIR / logo["master"])],
+		check=True,
+	)
+	pixel_rows = []
+	for y, row in enumerate(read_png(png_path)):
+		indexes = []
+		for x, (red, green, blue, alpha) in enumerate(row):
+			if alpha == 0:
+				indexes.append(0)
+				continue
+			colour = "#%02x%02x%02x" % (red, green, blue)
+			if alpha != 255 or colour not in rgb_to_index:
+				failures.append(f"{name}: pixel ({x}, {y}) is {colour} at alpha {alpha}, not a tone")
+				indexes.append(0)
+			else:
+				indexes.append(rgb_to_index[colour])
+		pixel_rows.append(indexes)
+
+	letter_to_index = {tones_by_name[tone_name]["letter"]: index for index, tone_name in enumerate(logo_tones, start=1)}
+	ascii_rows = read_ascii(ART_DIR / logo["ascii"])
+	ascii_limit = logo.get("ascii-width", limits["max-ascii-width"])
+	if len(ascii_rows) != logo["ascii-rows"]:
+		failures.append(f"{logo['ascii']}: {len(ascii_rows)} rows, the manifest says {logo['ascii-rows']}")
+	encoded = []
+	for row_number, (art, tones) in enumerate(ascii_rows):
+		where = f"{logo['ascii']} row {row_number}"
+		if len(art) > ascii_limit or (ascii_limit > limits["max-ascii-width"] and "ascii-width-exception" not in logo):
+			failures.append(f"{where}: wider than {ascii_limit}")
+		if not art.isascii() or any(not (" " <= character <= "~") for character in art):
+			failures.append(f"{where}: not printable ASCII")
+		if len(tones) != len(art):
+			failures.append(f"{where}: tone line is {len(tones)} long, art is {len(art)}")
+			continue
+		indexes = []
+		for column, (character, letter) in enumerate(zip(art, tones)):
+			if character == " " and letter != " ":
+				failures.append(f"{where} column {column}: a space with a tone")
+			elif character != " " and letter not in letter_to_index:
+				failures.append(f"{where} column {column}: tone {letter!r} is not in the logo's tones list")
+			indexes.append(letter_to_index.get(letter, 0))
+		encoded.append((art, indexes))
+	return failures, estimate_blob(pixel_rows, encoded, len(logo_tones))
 
 
 FILL = re.compile(r'fill="(#[0-9a-fA-F]{6})"')
@@ -147,8 +303,10 @@ def main():
 		sys.exit("review_sheet: no masters to render")
 
 	arguments.out.mkdir(parents=True, exist_ok=True)
+	limits = manifest["limits"]
 	failures = []
 	sheet_rows = []
+	estimates = {}
 	with tempfile.TemporaryDirectory() as scratch:
 		scratch_dir = Path(scratch)
 		for logo in chosen:
@@ -159,6 +317,10 @@ def main():
 					failures.append(f"{logo['master']}: fill {colour} is not a palette tone")
 			if failures:
 				continue
+			logo_failures, estimates[name] = check_logo(logo, svg_text, palette, scratch_dir, limits)
+			failures += logo_failures
+			if estimates[name] > limits["blob-bytes"]:
+				failures.append(f"{name}: estimated blob {estimates[name]} bytes is over {limits['blob-bytes']}")
 			for depth, _label, background in DEPTHS:
 				mapping = depth_colours(palette, depth)
 				variant = recolour(svg_text, mapping)
@@ -168,6 +330,12 @@ def main():
 				render(variant_path, arguments.out / f"{name}-{depth}.png")
 			sheet_rows.append((logo, svg_text))
 
+		total = sum(estimates.values())
+		for name, size in estimates.items():
+			print(f"review_sheet: {name:<10} about {size} bytes as .afl")
+		print(f"review_sheet: all       about {total} bytes (budget {limits['total-bytes']})")
+		if total > limits["total-bytes"]:
+			failures.append(f"estimated blobs total {total} bytes, over {limits['total-bytes']}")
 		if failures:
 			sys.exit("\n".join(failures))
 
@@ -208,7 +376,49 @@ def main():
 		sheet_path = scratch_dir / "afterfetch-logos.svg"
 		sheet_path.write_text("\n".join(parts), encoding="utf-8")
 		render(sheet_path, arguments.out / "afterfetch-logos.png")
+		family_path = scratch_dir / "afterfetch-family.svg"
+		family_path.write_text(family_sheet(sheet_rows, palette, letters), encoding="utf-8")
+		render(family_path, arguments.out / "afterfetch-family.png")
 	print(f"review_sheet: wrote {len(sheet_rows)} logos to {arguments.out}")
+
+
+def family_sheet(sheet_rows, palette, letters):
+	"""The logos side by side in the order of the day, one row per depth, then their ASCII forms at Dusk 16."""
+	order = {name: position for position, name in enumerate(DAY_ORDER)}
+	logos = sorted(sheet_rows, key=lambda entry: order.get(entry[0]["name"], len(DAY_ORDER)))
+	pixel_size = CELL_WIDTH
+	tile_width = 40 * pixel_size
+	tile_height = 24 * pixel_size
+	gap = 16
+	label_width = 220
+	header_height = 64
+	name_height = 28
+	sheet_width = label_width + len(logos) * (tile_width + gap) + gap
+	rows = [(depth, label, background, "pixels") for depth, label, background in DEPTHS if depth in FAMILY_DEPTHS]
+	rows.append(("dusk16", "ASCII form, Dusk 16", "#0a1230", "ascii"))
+	sheet_height = header_height + name_height + len(rows) * (tile_height + gap) + gap
+	parts = [
+		f'<svg xmlns="http://www.w3.org/2000/svg" width="{sheet_width}" height="{sheet_height}" viewBox="0 0 {sheet_width} {sheet_height}">',
+		f'<rect width="{sheet_width}" height="{sheet_height}" fill="#12121a"/>',
+		f'<text x="{gap}" y="40" fill="#e0e0e0" font-family="DejaVu Sans, sans-serif" font-size="22">afterfetch: one sun, eight horizons, from dawn to after dark</text>',
+	]
+	for column, (logo, _svg_text) in enumerate(logos):
+		left = label_width + column * (tile_width + gap)
+		parts.append(f'<text x="{left}" y="{header_height + 18}" fill="#e0e0e0" font-family="DejaVu Sans, sans-serif" font-size="16">{html.escape(logo["name"])}</text>')
+	for row_number, (depth, label, background, kind) in enumerate(rows):
+		top = header_height + name_height + row_number * (tile_height + gap)
+		parts.append(f'<text x="{gap}" y="{top + tile_height // 2}" fill="#b4bfce" font-family="DejaVu Sans, sans-serif" font-size="14">{html.escape(label)}</text>')
+		mapping = depth_colours(palette, depth)
+		for column, (logo, svg_text) in enumerate(logos):
+			left = label_width + column * (tile_width + gap)
+			parts.append(f'<rect x="{left}" y="{top}" width="{tile_width}" height="{tile_height}" fill="{background}"/>')
+			if kind == "pixels":
+				body = recolour(master_body(svg_text), mapping).replace("scale(10)", f"scale({pixel_size})")
+				parts.append(f'<g transform="translate({left + 2 * pixel_size} {top})">{body}</g>')
+			else:
+				parts.append(ascii_group(read_ascii(ART_DIR / logo["ascii"]), letters, mapping, left, top))
+	parts.append("</svg>")
+	return "\n".join(parts)
 
 
 if __name__ == "__main__":

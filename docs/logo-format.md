@@ -107,7 +107,7 @@ Half-block cells, with *U* the upper pixel and *L* the lower:
 
 **Depth.** Each palette index becomes a tone, and the tone becomes a colour from the generated table: `rgb` at truecolour, `xterm256` at 256, `ansi16` for SGR at 16, `console16` for console attributes at 16, `mono` for bold, plain or faint. A tone with no `console16` (and so no `ansi16`) or no `mono` is drawn as transparent at that depth. That one rule is how a tone that only works with many colours (a dark glow, say) drops out at 16.
 
-**`PIXELS_LOW`.** When dropping or merging tones is not enough, because the picture at 16 colours should be a different drawing, a logo carries a second picture. The generator makes it from `art/masters/<logo>-low.svg` when that file exists, and the core uses it at 16 colours, in mono and for the cells form of a logo with no ASCII form. Neither drawn logo needs one.
+**`PIXELS_LOW`.** When dropping or merging tones is not enough, because the picture at 16 colours should be a different drawing, a logo carries a second picture. The generator makes it from `art/masters/<logo>-low.svg` when that file exists, and the core uses it at 16 colours, in mono and for the cells form of a logo with no ASCII form. No logo needs one: `macos`, the one whose brief allowed for it, still reads at 16 colours with amber and peach merged into orange.
 
 ## Size budget
 
@@ -116,9 +116,16 @@ Half-block cells, with *U* the upper pixel and *L* the lower:
 | Logo | Header | `PIXELS` | `ASCII` | Total |
 |---|---|---|---|---|
 | `afterglow` | 15 | 3 + 82 | 3 + 75 | 178 |
+| `dos` | 13 | 3 + 80 | 3 + 58 | 157 |
+| `win16` | 16 | 3 + 146 | 3 + 192 | 360 |
 | `win32` | 17 | 3 + 116 | 3 + 189 | 328 |
+| `linux` | 15 | 3 + 92 | 3 + 85 | 198 |
+| `freebsd` | 13 | 3 + 79 | 3 + 81 | 179 |
+| `macos` | 16 | 3 + 89 | 3 + 121 | 232 |
+| `desk` | 14 | 3 + 157 | 3 + 154 | 331 |
+| All eight | | | | 1,963 |
 
-The ASCII form usually costs more than the picture: text has more distinct runs than stepped bands.
+The ASCII form usually costs more than the picture: text has more distinct runs than stepped bands. `make art` prints each blob's size as it writes it, and `art/scripts/review_sheet.py` prints the same figures as estimates while a master is being drawn.
 
 ## Validation
 

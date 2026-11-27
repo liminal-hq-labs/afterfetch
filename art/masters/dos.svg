@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+dos logo master: the Afterglow sun rising through CRT scanlines in chunky pixels, for MS-DOS, PC DOS, FreeDOS and DR-DOS
+
+(c) Copyright 2026 Liminal HQ, Scott Morris
+SPDX-License-Identifier: Apache-2.0 OR MIT
+
+Grid: 36 x 24 logo pixels (36 columns x 12 rows of half-block cells), 10 units each, drawn inside one scale(10) group so
+every coordinate below is a whole pixel. Fills are tone colours from art/palette/afterglow-dusk.toml only; nothing is
+antialiased, so rsvg-convert at 36 x 24 gives exactly one tone per pixel. docs/art.md has the rules.
+
+Dawn. A disc of radius 18 centred below the horizon at (18, 24), so only its cap has risen. Its edge steps only at cell
+rows (every two pixel rows) and only by two columns, so each step is a square 2 x 1-cell chunk, as text-mode block
+graphics would draw it. Bands from the crown: gold on rows 6 to 9, orange on 10 to 13, coral on 14 to 17. Rows 7, 9 and 11
+are left out, so the upper half of the disc is CRT scanlines (each a thin upper half-cell) that close up into the solid
+foot. The rose horizon crosses the whole width on row 18; the sky and rows 19 to 23 stay empty. Gold, orange, coral and
+rose land on the stock VGA set honestly (yellow, brown, light red, red).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="240" viewBox="0 0 360 240" shape-rendering="crispEdges">
+<title>dos</title>
+<g transform="scale(10)">
+<g id="sun">
+<path id="gold" fill="#ffd08e" d="M12 6h12v1h-12ZM8 8h20v1h-20Z"/>
+<path id="orange" fill="#ffaa40" d="M6 10h24v1h-24ZM4 12h28v2h-28Z"/>
+<path id="coral" fill="#f995a6" d="M2 14h32v4h-32Z"/>
+</g>
+<path id="horizon" fill="#f43f5e" d="M0 18h36v1h-36Z"/>
+</g>
+</svg>

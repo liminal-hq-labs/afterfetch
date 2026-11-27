@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+freebsd logo master: a deep ember sun behind a low ridge, for FreeBSD
+
+(c) Copyright 2026 Liminal HQ, Scott Morris
+SPDX-License-Identifier: Apache-2.0 OR MIT
+
+Grid: 36 x 24 logo pixels (36 columns x 12 rows of half-block cells), 10 units each, drawn inside one scale(10) group so
+every coordinate below is a whole pixel. Fills are tone colours from art/palette/afterglow-dusk.toml only; nothing is
+antialiased, so rsvg-convert at 36 x 24 gives exactly one tone per pixel. docs/art.md has the rules.
+
+Last light. A disc of radius 11 centred on the horizon at (18, 18), half set and deeper than the brand sun: a small gold
+core at the crown (rows 7 and 8), then coral (rows 9 to 11) and rose (rows 12 to 17), with no amber, orange or peach, so
+it reads red-orange at every depth. A night ridge crosses in front of its foot, rising from the edges in two gentle steps
+to a broad top on row 15, and the rose horizon runs the whole width along its foot on row 18.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="240" viewBox="0 0 360 240" shape-rendering="crispEdges">
+<title>freebsd</title>
+<g transform="scale(10)">
+<g id="sun">
+<path id="gold" fill="#ffd08e" d="M15 7h6v1h-6ZM12 8h12v1h-12Z"/>
+<path id="coral" fill="#f995a6" d="M11 9h14v1h-14ZM10 10h16v1h-16ZM9 11h18v1h-18Z"/>
+<path id="rose" fill="#f43f5e" d="M8 12h20v3h-20ZM7 15h4v1h-4ZM22 15h7v1h-7Z"/>
+</g>
+<path id="ridge" fill="#4a4580" d="M11 15h11v1h-11ZM5 16h24v1h-24ZM0 17h36v1h-36Z"/>
+<path id="horizon" fill="#f43f5e" d="M0 18h36v1h-36Z"/>
+</g>
+</svg>

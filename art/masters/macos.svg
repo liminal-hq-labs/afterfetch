@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+macos logo master: a soft glass sun over still water with one reflection, for macOS
+
+(c) Copyright 2026 Liminal HQ, Scott Morris
+SPDX-License-Identifier: Apache-2.0 OR MIT
+
+Grid: 36 x 24 logo pixels (36 columns x 12 rows of half-block cells), 10 units each, drawn inside one scale(10) group so
+every coordinate below is a whole pixel. Fills are tone colours from art/palette/afterglow-dusk.toml only; nothing is
+antialiased, so rsvg-convert at 36 x 24 gives exactly one tone per pixel. docs/art.md has the rules.
+
+Golden hour. A whole disc of radius 8 centred at (18, 9), just above the horizon, in all five bands of three rows: gold,
+amber, orange, peach, coral. A cream crescent sits just inside its upper-left rim, a specular glint, as if the disc were
+glass. The rose horizon runs from x 2 to 33 on row 18. Below it, one soft reflection, narrower than the disc and broken
+into two spans on each row: coral right under the line, then peach, then a gap, then orange, as still water echoes the
+foot of the sun. At 16 colours amber and peach become orange; the glint and the bands still read.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="240" viewBox="0 0 360 240" shape-rendering="crispEdges">
+<title>macos</title>
+<g transform="scale(10)">
+<g id="sun">
+<path id="gold" fill="#ffd08e" d="M15 1h6v1h-6ZM13 2h10v1h-10ZM12 3h2v1h-2ZM17 3h7v1h-7Z"/>
+<path id="amber" fill="#ffbd67" d="M11 4h2v1h-2ZM15 4h10v1h-10ZM11 5h1v1h-1ZM14 5h11v1h-11ZM10 6h2v1h-2ZM13 6h13v1h-13Z"/>
+<path id="orange" fill="#ffaa40" d="M10 7h2v1h-2ZM13 7h13v1h-13ZM10 8h16v2h-16ZM13 22h4v1h-4ZM18 22h5v1h-5Z"/>
+<path id="peach" fill="#fca073" d="M10 10h16v2h-16ZM11 12h14v1h-14ZM12 20h3v1h-3ZM16 20h8v1h-8Z"/>
+<path id="coral" fill="#f995a6" d="M11 13h14v1h-14ZM12 14h12v1h-12ZM13 15h10v1h-10ZM15 16h6v1h-6ZM11 19h5v1h-5ZM17 19h8v1h-8Z"/>
+</g>
+<path id="glint" fill="#fff7ea" d="M14 3h3v1h-3ZM13 4h2v1h-2ZM12 5h2v1h-2ZM12 6h1v2h-1Z"/>
+<path id="horizon" fill="#f43f5e" d="M2 18h32v1h-32Z"/>
+</g>
+</svg>

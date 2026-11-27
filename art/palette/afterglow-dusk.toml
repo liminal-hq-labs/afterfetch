@@ -10,7 +10,8 @@
 #   id         stable number, 1 to 15 (0 is transparent); never reused or renumbered
 #   letter     the tone's letter in art/ascii/*.txt tone rows
 #   rgb        the design colour, used at truecolour and in masters
-#   xterm256   the xterm-256 index used at 256 colours (16 to 255 only, never the user-themed 0 to 15)
+#   xterm256   the xterm-256 index used at 256 colours (16 to 255 only, never the user-themed 0 to 15); the nearest entry,
+#              except amber (see its role and docs/art.md)
 #   console16  the console attribute index (Win32 consoles, DOS, Windows 3.1 at 16 colours): 0 black, 1 blue, 2 green,
 #              3 cyan, 4 red, 5 magenta, 6 brown/yellow, 7 grey, 8 to 15 bright. Absent: drawn transparent at 16 and in mono
 #   ansi16     the SGR index at 16 colours (30 to 37 and 90 to 97 count from it); always console16 with bits 0 and 2 swapped
@@ -85,7 +86,7 @@ xterm256 = 221
 console16 = 6
 ansi16 = 3
 mono = "bright"
-role = "The sun between crown and body; 256 colours and truecolour only, orange at 16."
+role = "The sun between crown and body; 256 colours and truecolour only, orange at 16. Its xterm256 entry is an exception to the nearest rule: the nearest, 215, is orange's, so 221 keeps the two bands apart."
 source = "mix of gold and orange, 50 %"
 delta-e = { xterm256 = 18.7, dusk-console = 15.3, afterglow-terminal = 25.8, stock-console = 40.6, stock-vga = 38.8 }
 contrast = { navy = 11.1, black = 12.7 }
@@ -250,12 +251,12 @@ name = "umber"
 letter = "u"
 rgb = "#7d5422"
 xterm256 = 94
-console16 = 6
-ansi16 = 3
+console16 = 8
+ansi16 = 8
 mono = "dim"
-role = "Desk's halo step 2 and horizon middle (provisional until the desk master)."
+role = "Desk's halo step 2 and horizon middle; grey at 16, chosen by role so the halo dims outward (orange, grey, gone) instead of doubling its orange ring. Provisional until the owner reviews the desk logo."
 source = "Desk docs/PALETTE.md slot 9"
-delta-e = { xterm256 = 16.6, dusk-console = 48.4, afterglow-terminal = 59.2, stock-console = 35.3, stock-vga = 27.9 }
+delta-e = { xterm256 = 16.6, dusk-console = 49.1, afterglow-terminal = 47.1, stock-console = 39.7, stock-vga = 37.2 }
 contrast = { navy = 2.8, black = 3.2 }
 
 [[tone]]
@@ -264,7 +265,7 @@ name = "soot"
 letter = "d"
 rgb = "#372612"
 xterm256 = 235
-role = "Desk's halo step 3 and horizon bottom (provisional until the desk master); dropped at 16 colours and in mono."
+role = "Desk's halo step 3 and horizon bottom; dropped at 16 colours and in mono. Provisional until the owner reviews the desk logo."
 source = "Desk docs/PALETTE.md slot 10"
 delta-e = { xterm256 = 17.1 }
 contrast = { navy = 1.3, black = 1.4 }
