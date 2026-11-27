@@ -19,7 +19,7 @@ trap 'rm -rf "$work"' EXIT
 copies=(one/afterfetch two/second-place three/a/much/deeper/directory/with-a-longer-name)
 for copy in "${copies[@]}"; do
 	mkdir -p "$work/$copy"
-	(cd "$root" && git ls-files --cached --others --exclude-standard -z | xargs -0 -I{} cp -P --parents {} "$work/$copy/")
+	(cd "$root" && git ls-files --cached --others --exclude-standard -z | tar -cf - --null -T - | tar -xf - -C "$work/$copy")
 	for target in "${targets[@]}"; do
 		(cd "$work/$copy" && CARGO_TARGET_DIR="$work/$copy/target" bash platforms/unix/build.sh "$target" >/dev/null 2>&1)
 	done
