@@ -7,7 +7,7 @@ ENTRY(_start)
 SECTIONS
 {
 	. = 0x400000 + SIZEOF_HEADERS;
-	.text : { *(.text .text.*) *(.rodata .rodata.*) }
+	.text : { *(.text .text.*) *(.rodata .rodata.*) *(.data.rel.ro .data.rel.ro.*) }
 	. = ALIGN(0x1000) + (. & 0xfff);
 	.data : { *(.data .data.*) *(.got .got.plt) }
 	.bss : { *(.bss .bss.*) *(COMMON) }

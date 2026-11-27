@@ -9,6 +9,10 @@ mod aarch64;
 mod arm;
 #[cfg(target_arch = "mips")]
 mod mips;
+#[cfg(target_arch = "powerpc64")]
+mod powerpc64;
+#[cfg(target_arch = "riscv64")]
+mod riscv64;
 #[cfg(target_arch = "x86")]
 mod x86;
 #[cfg(target_arch = "x86_64")]
@@ -20,6 +24,10 @@ pub use aarch64::*;
 pub use arm::*;
 #[cfg(target_arch = "mips")]
 pub use mips::*;
+#[cfg(target_arch = "powerpc64")]
+pub use powerpc64::*;
+#[cfg(target_arch = "riscv64")]
+pub use riscv64::*;
 #[cfg(target_arch = "x86")]
 pub use x86::*;
 #[cfg(target_arch = "x86_64")]

@@ -13,12 +13,15 @@ root="$(cd "$here/../.." && pwd)"
 binary="${2:-$root/target/$target/release/afterfetch}"
 budget=32768
 data=""
+abi_flags=""
 
 case "$target" in
 x86_64-unknown-linux-musl) class="ELF64" machine="Advanced Micro Devices X86-64" ;;
 aarch64-unknown-linux-musl) class="ELF64" machine="AArch64" ;;
 armv7-unknown-linux-musleabihf | arm-unknown-linux-musleabihf) class="ELF32" machine="ARM" ;;
 i586-unknown-linux-musl) class="ELF32" machine="Intel 80386" ;;
+riscv64gc-unknown-linux-musl) class="ELF64" machine="RISC-V" data="little endian" ;;
+powerpc64le-unknown-linux-musl) class="ELF64" machine="PowerPC64" data="little endian" abi_flags="0x2$" budget=45056 ;; # AF-D54: PowerPC code is wider (TOC addressing)
 mips-unknown-linux-musl) class="ELF32" machine="MIPS R3000" budget=45056 data="big endian" ;; # AF-D22: o32 code is wider than Thumb
 mipsel-unknown-linux-musl) class="ELF32" machine="MIPS R3000" budget=45056 data="little endian" ;;
 *) echo "check.sh: no expectations for $target" >&2; exit 2 ;;
@@ -34,6 +37,7 @@ header="$(llvm-readelf -h "$binary")"
 grep -q "Class:.*$class" <<<"$header" || fail "not $class"
 grep -q "Machine:.*$machine" <<<"$header" || fail "not $machine"
 [ -z "$data" ] || grep -q "Data:.*$data" <<<"$header" || fail "not $data"
+[ -z "$abi_flags" ] || grep -qi "Flags:.*$abi_flags" <<<"$header" || fail "not ELFv2 (e_flags 2)"
 grep -q "Type:.*EXEC" <<<"$header" || fail "not a fixed-address executable (relocation-model=static)"
 ! llvm-readelf -l "$binary" | grep -q 'INTERP' || fail "has a PT_INTERP"
 ! llvm-readelf -S "$binary" | grep -q '\.interp' || fail "has an .interp section"
