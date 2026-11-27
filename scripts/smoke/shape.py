@@ -1,0 +1,162 @@
+#!/usr/bin/env python3
+# Checks the shape of afterfetch's output without comparing values, which differ on every machine.
+#
+#   shape.py plain <binary> <labels file> [--runner <emulator>]    plain output, the labels in order, no escapes, --json keys
+#   shape.py colour <capture file> <none|16|256|truecolour>        what a terminal run drew, from a captured pty stream
+#
+# A labels file lists one label per line in print order. A trailing `?` marks a label that may be absent.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+import json
+import os
+import re
+import subprocess
+import sys
+
+JSON_KEYS = [
+	"user", "hostname", "os", "kernel", "model", "uptime", "cpu", "memory", "display", "desktop", "terminal", "shell", "resources",
+]
+JSON_REQUIRED = ["os", "kernel"]
+MAX_COLUMNS = 80
+
+
+class Failure(Exception):
+	pass
+
+
+def expect(condition, message):
+	if not condition:
+		raise Failure(message)
+
+
+def run(command, extra_environment=None):
+	environment = dict(os.environ)
+	environment.pop("NO_COLOR", None)
+	environment.pop("CLICOLOR_FORCE", None)
+	environment.pop("FORCE_COLOR", None)
+	environment.setdefault("TERM", "xterm-256color")
+	environment.update(extra_environment or {})
+	return subprocess.run(command, capture_output=True, env=environment, timeout=30, check=False)
+
+
+def read_labels(path):
+	labels = []
+	with open(path, encoding="utf-8") as handle:
+		for line in handle:
+			line = line.strip()
+			if line:
+				labels.append((line.rstrip("?"), line.endswith("?")))
+	return labels
+
+
+def check_plain_text(output, what):
+	expect(all(byte < 0x80 for byte in output), f"{what}: a byte of 0x80 or more in plain output")
+	expect(b"\x1b" not in output, f"{what}: an escape sequence in plain output")
+	expect(b"\r" not in output, f"{what}: a carriage return on a Unix line")
+	expect(output.endswith(b"\n"), f"{what}: output does not end in a newline")
+	for number, line in enumerate(output.decode("ascii").split("\n")[:-1], 1):
+		expect(len(line) <= MAX_COLUMNS, f"{what}: line {number} is {len(line)} columns")
+
+
+def check_labels(lines, labels):
+	position = 0
+	for label, optional in labels:
+		found = next((at for at in range(position, len(lines)) if lines[at].startswith(label)), None)
+		if found is None:
+			expect(optional, f"label {label!r} missing or out of order")
+		else:
+			position = found + 1
+
+
+def check_plain(command, labels_path):
+	labels = read_labels(labels_path)
+
+	facts = run(command + ["--plain", "--no-logo"])
+	expect(facts.returncode == 0, f"--plain --no-logo exited {facts.returncode}")
+	check_plain_text(facts.stdout, "facts")
+	lines = facts.stdout.decode("ascii").split("\n")[:-1]
+	expect(len(lines) >= 4, "too few lines")
+	expect(re.fullmatch(r"\S+@\S+|\S+", lines[0]) is not None, f"title line {lines[0]!r}")
+	expect(set(lines[1]) == {"-"}, f"rule line {lines[1]!r}")
+	check_labels(lines[2:], labels)
+
+	picture = run(command + ["--plain"])
+	expect(picture.returncode == 0, f"--plain exited {picture.returncode}")
+	check_plain_text(picture.stdout, "picture")
+	expect(len(picture.stdout.splitlines()) >= len(lines), "the picture has fewer lines than the facts")
+
+	piped = run(command)
+	expect(piped.stdout == picture.stdout, "a pipe does not get the same output as --plain")
+
+	data = run(command + ["--json"])
+	expect(data.returncode == 0, f"--json exited {data.returncode}")
+	expect(data.stdout.count(b"\n") == 1 and data.stdout.endswith(b"\n"), "--json is not one line")
+	decoded = json.loads(data.stdout, object_pairs_hook=lambda pairs: pairs)
+	expect([key for key, _ in decoded] == JSON_KEYS, f"--json keys {[key for key, _ in decoded]}")
+	values = dict(decoded)
+	for key, value in values.items():
+		expect(value is None or isinstance(value, str), f"--json {key} is {value!r}")
+	for key in JSON_REQUIRED:
+		expect(values[key], f"--json {key} is empty")
+	expect(values["display"] is None, "a console program reported a display")
+	expect(values["resources"] is None, "a Windows 3.1 fact on Unix")
+
+	version = run(command + ["--version"])
+	expect(version.returncode == 0 and version.stdout.startswith(b"afterfetch "), "--version")
+	expect(run(command + ["--help"]).returncode == 0, "--help")
+	bad = run(command + ["--no-such-option"])
+	expect(bad.returncode == 2 and bad.stdout == b"" and bad.stderr, "a bad option gives exit 2 and a message on stderr")
+
+	desktop = run(command + ["--json"], {"XDG_CURRENT_DESKTOP": "Sunset"})
+	expect(json.loads(desktop.stdout)["desktop"] == "Sunset", "XDG_CURRENT_DESKTOP is not reported")
+	quiet = run(command + ["--json"], {"XDG_CURRENT_DESKTOP": ""})
+	expect(json.loads(quiet.stdout)["desktop"] is None, "an empty XDG_CURRENT_DESKTOP gave a row")
+
+	forced = run(command + ["--colour", "truecolour"], {"NO_COLOR": "1"})
+	expect(b"\x1b[0m" in forced.stdout and b"38;2;" in forced.stdout, "--colour truecolour did not draw colour on a pipe")
+	print("plain shape: ok")
+
+
+DEPTH_MARKS = {"16": (b"\x1b[9", b"38;5;", b"38;2;"), "256": (b"38;5;",), "truecolour": (b"38;2;",)}
+
+
+def check_colour(capture_path, depth):
+	with open(capture_path, "rb") as handle:
+		captured = handle.read().replace(b"\r\n", b"\n")
+	if depth == "none":
+		expect(b"\x1b" not in captured, "colour drawn at depth none")
+	else:
+		expect(b"\x1b[0m" in captured, "no reset sequence")
+		expect(captured.rstrip().endswith(b"\x1b[0m") or captured.endswith(b"\n"), "output ends oddly")
+		if depth == "16":
+			expect(re.search(rb"\x1b\[(3[0-7]|9[0-7])m", captured) is not None, "no 16-colour sequence")
+			expect(b"38;5;" not in captured and b"38;2;" not in captured, "a deeper colour at depth 16")
+		elif depth == "256":
+			expect(b"38;5;" in captured and b"38;2;" not in captured, "not 256-colour")
+		else:
+			expect(b"38;2;" in captured, "not true colour")
+	print(f"colour {depth}: ok")
+
+
+def main(argv):
+	try:
+		if len(argv) >= 4 and argv[1] == "plain":
+			command = argv[2:3]
+			if "--runner" in argv:
+				command = [argv[argv.index("--runner") + 1]] + command
+			check_plain(command, argv[3])
+		elif len(argv) == 4 and argv[1] == "colour":
+			check_colour(argv[2], argv[3])
+		else:
+			print(__doc__, file=sys.stderr)
+			return 2
+	except Failure as failure:
+		print(f"FAIL: {failure}", file=sys.stderr)
+		return 1
+	return 0
+
+
+if __name__ == "__main__":
+	sys.exit(main(sys.argv))
