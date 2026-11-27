@@ -105,10 +105,10 @@ pub const LOGOS: &[LogoEntry] = &[
 		height: 24,
 		ascii_width: 36,
 		ascii_rows: 12,
-		palette_len: 5,
-		pixels: Section { offset: 17, len: 157 },
+		palette_len: 9,
+		pixels: Section { offset: 21, len: 165 },
 		low: None,
-		ascii: Some(Section { offset: 177, len: 154 }),
+		ascii: Some(Section { offset: 189, len: 205 }),
 	},
 ];
 
