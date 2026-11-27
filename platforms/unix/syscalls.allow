@@ -1,0 +1,9 @@
+Read
+Write
+OpenAt
+Close
+Ioctl
+Uname
+Sysinfo
+Getuid
+ExitGroup

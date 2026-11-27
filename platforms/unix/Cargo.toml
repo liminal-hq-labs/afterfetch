@@ -1,0 +1,27 @@
+# The Unix shell for afterfetch: a static binary with no libc, using raw system calls. Built for Linux x86_64 and i586 today.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+[package]
+name = "afterfetch-unix"
+description = "Afterfetch for Unix: a static, no-libc binary over raw system calls"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+build = "build.rs"
+
+[[bin]]
+name = "afterfetch"
+path = "src/main.rs"
+test = false
+bench = false
+
+[dependencies]
+afterfetch-core = { path = "../../crates/afterfetch-core" }
+
+[lints]
+workspace = true

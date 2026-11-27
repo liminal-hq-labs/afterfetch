@@ -6,7 +6,7 @@
 
 [workspace]
 resolver = "3"
-members = ["crates/afterfetch-core", "crates/afterfetch-art"]
+members = ["crates/afterfetch-core", "crates/afterfetch-art", "platforms/unix"]
 
 [workspace.package]
 version = "0.1.0"
