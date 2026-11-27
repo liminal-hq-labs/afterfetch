@@ -32,13 +32,13 @@ Each decision is numbered and stays here even when superseded, with a note on wh
 | AF-D30 | Preview tool | `afterfetch-preview`, a host-only `std` crate, never shipped; it also makes the README screenshots for every system | Assumed | It is the face of platforms that cannot run yet, and one way to picture all of them. |
 | AF-D31 | Core shell interface | The core owns the whole program (`run`): a shell supplies `Platform` and `Terminal` and passes the arguments after its own name. Colour is a `Style` of `Paint` values (a tone, or one of the 16 console slots for swatches), so swatches need no extra trait method; `AnsiTerminal` encodes styles for the ANSI depths and console shells map them to attributes | Assumed | One small surface for six platforms, and every escape sequence is tested on the host. |
 | AF-D32 | Logos before the art generator | Every logo name parses, and all of them draw the `win32` ASCII picture until the generated logos land. Memory is shown in gigabytes from 4 GiB of total, and all arithmetic on 64-bit values is shifts, so a Pentium build needs no 64-bit divide | Assumed | Lets `--logo` and the shells work now; the generated art replaces the picture without an interface change. |
+| AF-D33 | Exit code for an output failure | 74 (I/O error, the BSD sysexits `EX_IOERR`) when output cannot be written: a closed pipe, or a `/DUMP` file that cannot be created. The codes are 0 ok, 2 usage, 70 crash, 74 output failure | Owner | Scripts can tell a failed write from a bad option or a crash. |
+| AF-D34 | JSON numbers and build identity | `--json` carries raw numbers (uptime in seconds, memory in bytes) and the build's `target` and `arch` beside the display text, in a versioned schema | Owner | Scripts get numbers they can compare; the text rows stay as they are. |
+| AF-D35 | Linux desktop row | Linux reports the desktop environment from `XDG_CURRENT_DESKTOP` as a row only when it is set | Owner | A desktop session shows GNOME or KDE; a console or SSH session stays tidy. |
+| AF-D36 | Accent tones for the rarer architectures | Teal for RISC-V and coral for PowerPC, as accent colours beside the existing x86, ARM and MIPS accents | Owner | Each architecture stays distinct with no extra artwork (AF-D17). |
 
 The go/no-go records (AF-D21 slice accepted, AF-D22 MIPS, AF-D23 FreeBSD, AF-D24 Windows 3.1) are written when their checkpoints are reached.
 
 ## Open questions
 
 - Whether real-hardware runs (a Pi, an OpenWrt router, a 486) are wanted before v0.1.0.
-- The exit code when the output cannot be written (a closed pipe, a `/DUMP` file that cannot be created); SPEC.md defines only 0, 2 and 70.
-- Whether `--json` should carry raw numbers (uptime seconds, memory bytes) and the build's `target` and `arch` beside the display text; today every value is text and the object holds only the facts.
-- Whether Linux reports the desktop (`XDG_CURRENT_DESKTOP`); no row holds it today.
-- The accent tones for RISC-V (teal is a console slot but not yet a named tone) and PowerPC (coral is assumed).

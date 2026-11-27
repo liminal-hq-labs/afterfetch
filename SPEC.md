@@ -65,6 +65,7 @@ Arguments are parsed by the core from raw bytes, with no allocation, the same wa
 | 0 | Done, including `--help`, `--version` and `--logo list` |
 | 2 | Usage error |
 | 70 | Crash: a panic ends the program with 70 on every platform, matching the Liminal Win32 programs |
+| 74 | Output failure: the output could not be written (a closed pipe, or a `/DUMP` file that cannot be created); decision AF-D33 |
 
 ## 4 · Facts
 
