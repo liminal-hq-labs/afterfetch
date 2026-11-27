@@ -24,7 +24,7 @@ __pycache__/
 /vendor/
 /platforms/*/target/
 /platforms/*/dist/
-/platforms/*/vendor/
+/platforms/dos/vendor/
 
 # Regenerable art previews
 /art/previews/

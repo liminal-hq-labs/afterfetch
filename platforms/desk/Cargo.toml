@@ -1,0 +1,51 @@
+# The Desk shell for afterfetch: a `.DMD` module for Desk's loader. Its own workspace, so the build-std flags and the custom target never
+# reach the host build. The three crates of Desk's module loader that the build needs (`desk-module`, `dmdpack`, `desk-guest`) are members
+# here, copied with `vendor/PROVENANCE.md`; a path dependency outside the workspace would change the layout of the code with the checkout's path.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+[workspace]
+resolver = "3"
+members = [".", "module", "vendor/module/format", "vendor/module/pack", "vendor/module/guest"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0 OR MIT"
+rust-version = "1.98.0"
+repository = "https://github.com/liminal-hq-labs/afterfetch"
+publish = false
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+
+[package]
+name = "afterfetch-desk"
+description = "Afterfetch for Desk: the module's logic over a line sink, which the host tests and the module runs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[features]
+# The module is packed for Desk's hosted track (a DPMI client on DOS) instead of the native kernel, and says so in its OS row.
+hosted = []
+
+[dependencies]
+afterfetch-core = { path = "crates/afterfetch-core" }
+
+[lints]
+workspace = true
+
+[profile.release]
+panic = "abort"
+opt-level = "z"
+lto = true
+codegen-units = 1
+debug = 0

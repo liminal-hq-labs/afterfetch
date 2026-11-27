@@ -9,13 +9,14 @@ export CARGO_BUILD_JOBS ?= 4
 .PHONY: preview sheet
 .PHONY: fmt-win32 clippy-win32 test-win32 build-win32 check-win32 smoke-wine repro-win32
 .PHONY: fmt-dos clippy-dos test-dos build-dos check-dos smoke-dos repro-dos
+.PHONY: fmt-desk clippy-desk test-desk build-desk check-desk repro-desk
 .PHONY: fmt-win16 clippy-win16 test-win16 build-win16 check-win16 smoke-wine16 smoke-w31 repro-win16
 
 UNIX_TARGETS := x86_64-unknown-linux-musl i586-unknown-linux-musl aarch64-unknown-linux-musl armv7-unknown-linux-musleabihf arm-unknown-linux-musleabihf mips-unknown-linux-musl mipsel-unknown-linux-musl riscv64gc-unknown-linux-musl powerpc64le-unknown-linux-musl x86_64-unknown-freebsd aarch64-unknown-freebsd x86_64-apple-darwin aarch64-apple-darwin
 WIN32_ARCHES := i586 x86_64 aarch64
 
 # Every later work package adds its builds, size checks and smokes to `check`.
-check: check-fast deny clippy-unix build-unix check-unix smoke-linux-native smoke-freebsd repro-unix fmt-win32 clippy-win32 test-win32 build-win32 check-win32 smoke-wine repro-win32 fmt-dos clippy-dos test-dos build-dos check-dos smoke-dos repro-dos fmt-win16 clippy-win16 test-win16 build-win16 check-win16 smoke-wine16 repro-win16
+check: check-fast deny clippy-unix build-unix check-unix smoke-linux-native smoke-freebsd repro-unix fmt-win32 clippy-win32 test-win32 build-win32 check-win32 smoke-wine repro-win32 fmt-dos clippy-dos test-dos build-dos check-dos smoke-dos repro-dos fmt-win16 clippy-win16 test-win16 build-win16 check-win16 smoke-wine16 repro-win16 fmt-desk clippy-desk test-desk build-desk check-desk repro-desk
 
 check-fast: headers fmt clippy test test-art art-check
 
@@ -144,6 +145,26 @@ smoke-w31: build-win16 build-dos
 
 repro-win16:
 	bash scripts/repro-win16.sh
+
+# Desk (AF-D59): AFETCH.DMD, a module for Desk's loader, in its own workspace with Desk's module crates copied in (platforms/desk/vendor/PROVENANCE.md).
+# Nothing runs it, because Desk has no loader that can yet: `check-desk` makes Desk's own checks of a module and runs the module's logic on the host.
+fmt-desk:
+	cd platforms/desk && cargo fmt --all -- --check
+
+clippy-desk:
+	bash platforms/desk/build.sh clippy
+
+test-desk:
+	cd platforms/desk && cargo nextest run -p afterfetch-desk --locked --no-tests=pass
+
+build-desk:
+	bash platforms/desk/build.sh
+
+check-desk: build-desk
+	bash platforms/desk/check.sh --no-build
+
+repro-desk:
+	bash scripts/repro-desk.sh
 
 # Preview (AF-D50): what afterfetch looks like on any supported system, from sample facts. Host only; never part of a size gate or a
 # release. `make preview SYSTEM=macos COLOUR=256 WIDTH=100` prints one system; `make sheet` writes the contact sheet of the eight logos.
