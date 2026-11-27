@@ -142,8 +142,8 @@ pub const TONES: [Tone; 15] = [
 		letter: b'u',
 		rgb: [0x7d, 0x54, 0x22],
 		xterm256: 94,
-		console16: Some(6),
-		ansi16: Some(3),
+		console16: Some(8),
+		ansi16: Some(8),
 		mono: Some(Mono::Dim),
 	},
 	Tone {
