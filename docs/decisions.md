@@ -25,6 +25,8 @@ Each decision is numbered and stays here even when superseded, with a note on wh
 | AF-D19 | 32-bit x86 Linux | `i586` (Pentium, no SSE2), matching Win32 | Assumed | One 32-bit x86 floor across platforms. |
 | AF-D20 | Missing facts | Left out: the row is omitted, and JSON gives `null` | Owner | A dash on every row of a platform that cannot report it is noise. |
 | AF-D-Desk | Desk as a platform | Desk, Liminal HQ's Desk OS (`~/source/liminal-hq/desk`), is also a supported platform; its section is pending in the plan, and `docs/platforms.md` gets a row when that file exists | Owner (details pending) | Desk's `dos/` lineage makes a build plausible; the shape waits for the plan. |
+| AF-D31 | Core shell interface | The core owns the whole program (`run`): a shell supplies `Platform` and `Terminal` and passes the arguments after its own name. Colour is a `Style` of `Paint` values (a tone, or one of the 16 console slots for swatches), so swatches need no extra trait method; `AnsiTerminal` encodes styles for the ANSI depths and console shells map them to attributes | Assumed | One small surface for six platforms, and every escape sequence is tested on the host. |
+| AF-D32 | Logos before the art generator | Every logo name parses, and all of them draw the `win32` ASCII picture until the generated logos land. Memory is shown in gigabytes from 4 GiB of total, and all arithmetic on 64-bit values is shifts, so a Pentium build needs no 64-bit divide | Assumed | Lets `--logo` and the shells work now; the generated art replaces the picture without an interface change. |
 
 The go/no-go records (AF-D21 slice accepted, AF-D22 MIPS, AF-D23 FreeBSD, AF-D24 Windows 3.1) are written when their checkpoints are reached.
 
