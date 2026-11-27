@@ -1,6 +1,6 @@
 // `/proc/cpuinfo`: blocks of `key : value` lines, one block per logical processor. The shape differs by architecture: x86 has `model name`,
 // 32-bit ARM has `model name` (the architecture revision) and `Hardware`, 64-bit ARM has only implementer and part numbers, MIPS has
-// `cpu model`, and RISC-V has `uarch`.
+// `cpu model`, RISC-V has `uarch` and PowerPC has `cpu` (`POWER9 (architected), altivec supported`).
 //
 // (c) Copyright 2026 Liminal HQ, Scott Morris
 // SPDX-License-Identifier: Apache-2.0 OR MIT
@@ -34,6 +34,7 @@ pub struct CpuInfo {
 	model_name: Buf<64>,
 	cpu_model: Buf<64>,
 	uarch: Buf<32>,
+	power_cpu: Buf<48>,
 	hardware: Buf<48>,
 	board_model: Buf<48>,
 	implementer: u32,
@@ -47,6 +48,7 @@ impl CpuInfo {
 			model_name: Buf::new(),
 			cpu_model: Buf::new(),
 			uarch: Buf::new(),
+			power_cpu: Buf::new(),
 			hardware: Buf::new(),
 			board_model: Buf::new(),
 			implementer: 0,
@@ -67,6 +69,10 @@ impl CpuInfo {
 			keep_first(&mut self.cpu_model, value);
 		} else if key.eq_ignore_ascii_case(b"uarch") {
 			keep_first(&mut self.uarch, value);
+		} else if key.eq_ignore_ascii_case(b"cpu") {
+			// PowerPC: `POWER9 (architected), altivec supported`; the feature list after the comma is not part of the name.
+			let name = value.split(|&byte| byte == b',').next().unwrap_or(b"");
+			keep_first(&mut self.power_cpu, name.trim_ascii_end());
 		} else if key.eq_ignore_ascii_case(b"hardware") {
 			keep_first(&mut self.hardware, value);
 		} else if key == b"Model" {
@@ -85,7 +91,7 @@ impl CpuInfo {
 	}
 
 	/// Writes the CPU row (`Intel(R) Core(TM) i7 (8 cores)`) to `out`, or nothing when the file named no processor. The name comes from
-	/// `model name`, `cpu model`, `uarch`, a known ARM part, `Hardware` or `Model`, in that order.
+	/// `model name`, `cpu model`, `uarch`, `cpu` (PowerPC), a known ARM part, `Hardware` or `Model`, in that order.
 	pub fn describe<const N: usize>(&self, out: &mut Buf<N>) {
 		let arm_part = (self.implementer == ARM_IMPLEMENTER)
 			.then(|| ARM_PARTS.iter().find(|(part, _)| *part == self.part))
@@ -95,6 +101,7 @@ impl CpuInfo {
 			self.model_name.as_bytes(),
 			self.cpu_model.as_bytes(),
 			self.uarch.as_bytes(),
+			self.power_cpu.as_bytes(),
 			arm_part.unwrap_or(b""),
 			self.hardware.as_bytes(),
 			self.board_model.as_bytes(),
@@ -160,6 +167,12 @@ mod tests {
 			described(b"system type\t: Atheros AR9344 rev 2\nprocessor\t: 0\ncpu model\t: MIPS 74Kc V4.12\n"),
 			"MIPS 74Kc V4.12"
 		);
+	}
+
+	#[test]
+	fn powerpc_uses_cpu_without_its_feature_list() {
+		let text = b"processor\t: 0\ncpu\t\t: POWER9 (architected), altivec supported\nclock\t\t: 2800.000000MHz\nprocessor\t: 1\ncpu\t\t: POWER9 (architected), altivec supported\n";
+		assert_eq!(described(text), "POWER9 (architected) (2 cores)");
 	}
 
 	#[test]
