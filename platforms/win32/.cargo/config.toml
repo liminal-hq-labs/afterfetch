@@ -1,9 +1,11 @@
-# Cargo settings for the Win32 build: Pentium-class code, no C runtime, linked by lld-link. The target is chosen by build.sh, so the
-# host unit tests are not affected.
+# Cargo settings for the Win32 builds: no C runtime, linked by lld-link.
 #
 # (c) Copyright 2026 Liminal HQ, Scott Morris
 # SPDX-License-Identifier: Apache-2.0 OR MIT
 
+# Pentium-class code for i586. The target is chosen by build.sh, so the host unit tests are not affected. Every target aborts a panic where
+# it stands (`panic=immediate-abort`, which needs the unstable options and the standard library built from source, as build.sh does): the
+# panic handler only exits, so the message machinery is dead weight.
 [target.i586-win32]
 linker = "rust-lld"
 rustflags = [
@@ -23,5 +25,41 @@ rustflags = [
 	"-C", "link-arg=/DEBUG:NONE",
 	"-C", "link-arg=/Brepro",
 	# Panic messages carry no file names (the panic handler exits), which would otherwise embed the build path.
-	"-Z", "location-detail=none",
+	"-Z", "location-detail=none", "-C", "panic=immediate-abort", "-Z", "unstable-options",
+]
+
+# The 64-bit builds, from `x86_64-win32.json` and `aarch64-win32.json`. They are not fixed at a base: the PE files keep their relocations (ARM64 requires them) and
+# ASLR with high entropy, and `/MERGE:.data=.rdata` still holds since the program has no writable data. The subsystem version is the
+# oldest the architecture's Windows has: 5.02 for x86-64 (Windows XP x64, Server 2003), 6.0 for ARM64 (Windows 10 on ARM has 10.0 and
+# accepts anything at or below it).
+[target.x86_64-win32]
+linker = "rust-lld"
+rustflags = [
+	"-C", "linker-flavor=lld-link",
+	"-C", "link-arg=/NODEFAULTLIB",
+	"-C", "link-arg=/ENTRY:start",
+	"-C", "link-arg=/SUBSYSTEM:CONSOLE,5.02",
+	"-C", "link-arg=/DYNAMICBASE",
+	"-C", "link-arg=/HIGHENTROPYVA",
+	"-C", "link-arg=/FILEALIGN:512",
+	"-C", "link-arg=/MERGE:.data=.rdata",
+	"-C", "link-arg=/DEBUG:NONE",
+	"-C", "link-arg=/Brepro",
+	"-Z", "location-detail=none", "-C", "panic=immediate-abort", "-Z", "unstable-options",
+]
+
+[target.aarch64-win32]
+linker = "rust-lld"
+rustflags = [
+	"-C", "linker-flavor=lld-link",
+	"-C", "link-arg=/NODEFAULTLIB",
+	"-C", "link-arg=/ENTRY:start",
+	"-C", "link-arg=/SUBSYSTEM:CONSOLE,6.0",
+	"-C", "link-arg=/DYNAMICBASE",
+	"-C", "link-arg=/HIGHENTROPYVA",
+	"-C", "link-arg=/FILEALIGN:512",
+	"-C", "link-arg=/MERGE:.data=.rdata",
+	"-C", "link-arg=/DEBUG:NONE",
+	"-C", "link-arg=/Brepro",
+	"-Z", "location-detail=none", "-C", "panic=immediate-abort", "-Z", "unstable-options",
 ]
