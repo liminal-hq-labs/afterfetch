@@ -166,9 +166,10 @@ impl Tone {
 			Depth::Mono => self.mono_weight() as u32,
 			Depth::Ansi16 | Depth::Console16 => u32::from(self.index().unwrap_or(0)),
 			Depth::Ansi256 => u32::from(self.xterm256().unwrap_or(0)),
-			Depth::TrueColour => self
-				.rgb()
-				.map_or(0, |[red, green, blue]| u32::from_be_bytes([0, red, green, blue])),
+			// Shifts and not `from_be_bytes`: a build for a 386 has no `bswap`, and the shifts are the same number.
+			Depth::TrueColour => self.rgb().map_or(0, |[red, green, blue]| {
+				u32::from(red) << 16 | u32::from(green) << 8 | u32::from(blue)
+			}),
 		}
 	}
 }
