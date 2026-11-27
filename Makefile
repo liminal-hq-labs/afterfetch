@@ -9,7 +9,7 @@ export CARGO_BUILD_JOBS ?= 4
 .PHONY: preview sheet
 .PHONY: fmt-win32 clippy-win32 test-win32 build-win32 check-win32 smoke-wine repro-win32
 
-UNIX_TARGETS := x86_64-unknown-linux-musl i586-unknown-linux-musl aarch64-unknown-linux-musl armv7-unknown-linux-musleabihf arm-unknown-linux-musleabihf
+UNIX_TARGETS := x86_64-unknown-linux-musl i586-unknown-linux-musl aarch64-unknown-linux-musl armv7-unknown-linux-musleabihf arm-unknown-linux-musleabihf mips-unknown-linux-musl mipsel-unknown-linux-musl
 
 # Every later work package adds its builds, size checks and smokes to `check`.
 check: check-fast deny clippy-unix build-unix check-unix smoke-linux-native repro-unix fmt-win32 clippy-win32 test-win32 build-win32 check-win32 smoke-wine repro-win32
@@ -42,7 +42,7 @@ art-check:
 test-art:
 	python3 -m unittest discover -s art/scripts/tests
 
-# Unix (Linux x86_64, i586, ARM64, ARMv7 and ARMv6): lint, build, structure and size checks, the smokes that run here, and reproducibility.
+# Unix (Linux x86_64, i586, ARM64, ARMv7, ARMv6, MIPS and MIPSel): lint, build, structure and size checks, the smokes that run here, and reproducibility.
 clippy-unix:
 	for target in $(UNIX_TARGETS); do bash platforms/unix/build.sh $$target clippy || exit 1; done
 

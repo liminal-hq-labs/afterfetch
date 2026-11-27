@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds the Unix binaries in three different directories and compares the bytes. Usage: repro-unix.sh [target ...]
 #
-# The three paths differ in depth and length. The copies and their build output live in ~/.cache/afterfetch/repro-unix and are removed when
+# The three paths differ in depth and length. The copies and their build output live in a fresh directory under ~/.cache/afterfetch (so two runs do not share one) and are removed when
 # the script ends.
 #
 # (c) Copyright 2026 Liminal HQ, Scott Morris
@@ -11,10 +11,9 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 targets=("$@")
-[ "${#targets[@]}" -gt 0 ] || targets=(x86_64-unknown-linux-musl i586-unknown-linux-musl aarch64-unknown-linux-musl armv7-unknown-linux-musleabihf arm-unknown-linux-musleabihf)
-work="${HOME}/.cache/afterfetch/repro-unix"
-rm -rf "$work"
-mkdir -p "$work"
+[ "${#targets[@]}" -gt 0 ] || targets=(x86_64-unknown-linux-musl i586-unknown-linux-musl aarch64-unknown-linux-musl armv7-unknown-linux-musleabihf arm-unknown-linux-musleabihf mips-unknown-linux-musl mipsel-unknown-linux-musl)
+mkdir -p "${HOME}/.cache/afterfetch"
+work="$(mktemp -d "${HOME}/.cache/afterfetch/repro-unix.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 
 copies=(one/afterfetch two/second-place three/a/much/deeper/directory/with-a-longer-name)

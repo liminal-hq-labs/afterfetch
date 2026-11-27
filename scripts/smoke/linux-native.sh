@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Runs the Linux binaries and checks their output by shape. Usage: linux-native.sh [x86_64|i586|aarch64|armv7|armv6 ...] (default: all)
+# Runs the Linux binaries and checks their output by shape. Usage: linux-native.sh [x86_64|i586|aarch64|armv7|armv6|mips|mipsel ...] (default: all)
 #
-# The Arm binaries run under qemu-user, called by name, as a Pi-like core (QEMU_CPU); the README says what that does not prove.
+# The Arm and MIPS binaries run under qemu-user, called by name, as a named core (QEMU_CPU: a Pi-like Arm core, a 24Kc for MIPS); the README says what that does not prove.
 #
 # Plain and --json come from a pipe (`shape.py plain`); colour from `script -qec` at 16, 256, true colour and TERM=dumb. i586 runs natively
 # when the kernel allows, else under qemu-i386-static, else SKIP.
@@ -23,7 +23,7 @@ if ! command -v python3 >/dev/null; then
 fi
 
 arches=("$@")
-[ "${#arches[@]}" -gt 0 ] || arches=(x86_64 i586 aarch64 armv7 armv6)
+[ "${#arches[@]}" -gt 0 ] || arches=(x86_64 i586 aarch64 armv7 armv6 mips mipsel)
 
 smoke_one() {
 	local arch="$1"
@@ -35,6 +35,8 @@ smoke_one() {
 	armv7) triple=armv7-unknown-linux-musleabihf cpu=cortex-a7 runner=(qemu-arm-static) ;;
 	armv6) triple=arm-unknown-linux-musleabihf cpu=arm1176 runner=(qemu-arm-static) ;;
 	aarch64) cpu=cortex-a72 runner=(qemu-aarch64-static) ;;
+	mips) triple=mips-unknown-linux-musl cpu=24Kc runner=(qemu-mips-static) ;;
+	mipsel) triple=mipsel-unknown-linux-musl cpu=24Kc runner=(qemu-mipsel-static) ;;
 	esac
 	local binary="$root/target/$triple/release/afterfetch"
 	if [ ! -x "$binary" ]; then
