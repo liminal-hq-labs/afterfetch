@@ -54,3 +54,4 @@ The go/no-go records (AF-D21 slice accepted, AF-D22 MIPS, AF-D23 FreeBSD, AF-D24
 - Whether real-hardware runs (a Pi, an OpenWrt router, a 486) are wanted before v0.1.0.
 - The owner's review of the `desk` logo, which settles the provisional umber and soot tones (AF-D42).
 - The key names of JSON schema 1 (AF-D43), before the core implements them.
+- The binary size budgets with the logos in (AF-D10, AF-D45). The Linux binaries are 29,528 bytes (x86_64) and 26,292 (i586) against 24 KiB, where they were 22,864 and 20,916 before: the eight blobs are 1,963 bytes, the art crate's logo index and tone tables about 2.3 KB with the lookup, and the decoder and renderer about 3.2 KB. The Win32 i586 build, 15,872 bytes before logos at a 16 KiB budget, would come to about 22 KiB. Options: raise the budgets (Linux to 32 KiB and Win32 to 24 KiB), carry only the default logo and `afterglow` in each binary, or slim the index and tone tables in `afterfetch-art`.
