@@ -1,102 +1,270 @@
 # Afterfetch specification
 
-This is a skeleton. The full product definition (command line, facts, output rules, JSON keys, exit codes, logo names) is written in the SPEC work package.
+What `afterfetch` prints, how it is asked, and what each platform build promises. Why each choice was made is in [docs/decisions.md](docs/decisions.md) (cited as AF-D*n*); how each target is built and tested is in [docs/platforms.md](docs/platforms.md). When this document and the code disagree, decide which is right and fix the other in the same change.
 
-## Purpose
+## Status
 
-A tiny system-information command with an Afterglow sun for every system, from DOS to macOS.
+Nothing is released and nothing runs yet. Every part may change between commits.
 
-## Users and scenarios
+- **Core** (`afterfetch-core`: arguments, colour depth, facts, layout, JSON): in progress; the command line, facts, layout, depth and JSON below are implemented and host-tested.
+- **Art** (`afterfetch-art`, the eight logos): in progress; `afterglow` and `win32` first. Until the generated logos land, every logo name draws the `win32` picture (AF-D32).
+- **Platforms**: none built. The order and the go/no-go checkpoints are in §13.
 
-- Anyone who wants a quick, honest summary of the system in front of them, on any of the supported platforms.
+## 1 · Purpose and scope
 
-## Non-goals
+`afterfetch` prints a short, honest summary of the system it runs on beside an Afterglow sun drawn for that kind of system. It is one small static program per platform, with no libc, no runtime to install and no network access.
 
-- Reporting a fact a system cannot honestly read: that row is omitted.
-- Per-architecture artwork: the architecture is text plus an accent colour.
+**Non-goals.**
 
-## Components
+- Reporting a fact a system cannot honestly read. That row is left out (AF-D20).
+- Per-architecture artwork. The architecture is text plus an accent colour (AF-D17).
+- Configuration files, themes, plugins or a scripting language.
+- Packages for any distribution or store. Releases are plain files and zips (§12).
 
-`afterfetch-core` (portable, `no_std`), `afterfetch-art` (generated logos and palette) and a thin shell per platform family.
+## 2 · Program names
 
-## Behaviour
+| Platform | File | Notes |
+|---|---|---|
+| Linux, FreeBSD, macOS | `afterfetch` | Static; on macOS it links `libSystem` only (AF-D7) |
+| Windows 95 and later, ReactOS | `afterfetch.exe` | Console program, subsystem 4.0 on x86 |
+| DOS | `AFETCH.EXE` | 8.3 name; DPMI program with CWSDPMI embedded (AF-D1, AF-D16) |
+| Windows 3.1 | `AFETCHW.EXE` | 8.3 name; a small window, since Windows 3.1 has no console (AF-D3) |
+| Desk | `AFETCH.DMD` | A Desk module (AF-D25) |
 
-### Command line
+`AFETCH.EXE` and `AFETCHW.EXE` can sit together in one `C:\UTILS`. Under Windows 3.1, `AFETCH.EXE` also runs in the MS-DOS Prompt and says so in its OS row.
 
-Options are GNU-style long options, parsed in the core from raw argument bytes without allocating. A later argument wins over an earlier one. `--logo=win32` and `--logo win32` are the same. The slash forms DOS and Windows users type are accepted everywhere, in any case (`/PLAIN`, `/NOLOGO`, `/LOGO:name`, `/COLOUR:mode`, `/MONO`, `/JSON`, `/VERSION`, `/?`).
+Each build has a **target name**, `<os>-<arch>`, used by `--version` and in release file names (§12): `linux-x86_64`, `linux-i586`, `linux-aarch64`, `linux-armv7`, `linux-armv6`, `linux-mips`, `linux-mipsel`, `linux-mips64el`, `linux-riscv64`, `linux-ppc64le`, `freebsd-x86_64`, `freebsd-i686`, `freebsd-aarch64`, `macos-aarch64`, `macos-x86_64`, `windows-i586`, `windows-x86_64`, `windows-aarch64`, `dos-i386`, `win16-i386`, `desk-i486`.
 
-| Option | Meaning |
+## 3 · Command line
+
+Arguments are parsed by the core from raw bytes, with no allocation, the same way on every platform. Both spellings work everywhere: GNU-style long options for Unix and Windows users, slash options for DOS and Windows 3.1 users. Option names are case-insensitive in the slash form and case-sensitive in the long form; values (logo names, colour modes) are case-insensitive in both.
+
+| Long form | Slash form | Meaning |
+|---|---|---|
+| `--plain` | `/PLAIN` | No colour and the ASCII form of the logo: exactly what a pipe gets |
+| `--no-logo` | `/NOLOGO` | Facts only |
+| `--logo <name>`, `--logo=<name>` | `/LOGO:<name>` | `auto` (the default: this system's logo, §7) or a logo name; `list` prints the names, one per line, and exits |
+| `--colour <mode>`, `--colour=<mode>`; `--color` is an alias | `/COLOUR:<mode>`, `/COLOR:<mode>` | `auto` (default), `never`, `always`, `mono`, `16`, `256`, `truecolour` (`truecolor` and `24bit` are aliases) |
+| | `/MONO` | The same as `--colour mono` |
+| `--json` | `/JSON` | The facts as one JSON object (§6); no logo, no colour |
+| `-h`, `--help` | `/?`, `/HELP` | Usage on standard output, then exit 0 |
+| `-V`, `--version` | `/VERSION` | `afterfetch 0.1.0 (<target name>)`, for example `afterfetch 0.1.0 (linux-aarch64)`, then exit 0 |
+
+- Options may come in any order; when one is given twice, the last wins. `--help` and `--version` win over everything else.
+- There are no positional arguments. Anything that is not an option above is a usage error.
+- A usage error (an unknown option, a missing value, or a value that is not a logo name or colour mode) prints one line naming the argument's position to the error stream and exits 2.
+
+**Windows 3.1 only.** `AFETCHW.EXE` reads the same options from its command line (a Program Manager item or File > Run) and adds `/DUMP=<file>`: write what a pipe would get to `<file>` and exit without opening a window. `/DUMP` honours `/JSON`, `/NOLOGO` and `/LOGO`; it is how the program is tested. Without `/DUMP` the window always draws in colour; `/PLAIN` and `/MONO` draw the ASCII form in black on white.
+
+**Desk.** A Desk module has no command line. `AFETCH.DMD` always runs as `--plain` with the `desk` logo (§5).
+
+**Exit codes.**
+
+| Code | Meaning |
 |---|---|
-| `--plain` | No colour and the ASCII form of the logo: the output a pipe gets |
-| `--no-logo` | The facts alone |
-| `--logo <name>` | `auto` (default: the logo for this system), `list` (print the names), or one of `afterglow`, `dos`, `win16`, `win32`, `linux`, `freebsd`, `macos`, `desk` |
-| `--colour <mode>`, `--color <mode>` | `auto` (default), `never`, `always`, `mono`, `16`, `256`, `truecolour` (also `truecolor`, `24bit`) |
-| `--json` | The facts as one JSON object on one line: no logo, no colour |
-| `-h`, `--help` | Usage, then exit 0 |
-| `-V`, `--version` | `afterfetch 0.1.0 (<os>-<arch>)`, then exit 0 |
+| 0 | Done, including `--help`, `--version` and `--logo list` |
+| 2 | Usage error |
+| 70 | Crash: a panic ends the program with 70 on every platform, matching the Liminal Win32 programs |
 
-Until the art generator lands, every logo name draws the `win32` picture.
+## 4 · Facts
 
-Exit codes: 0 done, 2 usage error (an unknown option, a missing value or a value that is not a logo or colour mode; the message names the argument's position and goes to the error stream), 70 crash (set by a shell's panic handler).
+The facts are one ordered list in the core. A platform fills each row it can honestly read and leaves the rest empty; an empty row is **omitted** from the text output and is `null` in JSON (AF-D20). Values are cut to fit at a character boundary, never wrapped (§5), and each holds at most 64 bytes; the user and host names hold at most 32.
 
-### Facts
+The output is, in order: the **title** (`user@host`, or whichever half exists; left out with its rule when neither does), a **rule** of dashes as long as the title, the rows below in this order (an omitted row closes up), then, with colour only, a gap and two rows of eight swatches of the console colours.
 
-The output is a title (`user@host`) and a rule of dashes under it, then one labelled row for each fact the platform could report, in this order, then (with colour) a gap and two rows of eight swatches of the console colours. A fact a system cannot honestly report is **left out**: its row is not printed, rows below close up, and a title with no user and no host is left out with its rule (AF-D20). With only one of user and host, the title is that one.
-
-| Row | Label | JSON key | Tone |
+| Row | Label | Tone | JSON key |
 |---|---|---|---|
-| title | `user@host` | `user`, `hostname` | gold, slate, lilac |
-| OS | `OS:` | `os` | gold |
-| Kernel | `Kernel:` | `kernel` | orange |
-| Host (the machine's model) | `Host:` | `model` | coral |
-| Uptime | `Uptime:` | `uptime` | coral |
-| CPU | `CPU:` | `cpu` | rose |
-| Memory | `Memory:` | `memory` | rose |
-| Display | `Display:` | `display` | lilac |
-| Terminal | `Terminal:` | `terminal` | lilac |
-| Shell | `Shell:` | `shell` | violet |
-| Resources (Windows 3.1) | `Resources:` | `resources` | periwinkle |
+| Title | — | gold user, slate `@`, lilac host | `user`, `hostname` |
+| OS | `OS:` | gold | `os` |
+| Kernel | `Kernel:` | orange | `kernel` |
+| Host (the machine's model, not its network name) | `Host:` | coral | `model` |
+| Uptime | `Uptime:` | coral | `uptime` |
+| CPU | `CPU:` | rose | `cpu` |
+| Memory | `Memory:` | rose | `memory` |
+| Display (a graphical screen) | `Display:` | lilac | `display` |
+| Terminal (a text terminal) | `Terminal:` | lilac | `terminal` |
+| Shell | `Shell:` | violet | `shell` |
+| Resources (Windows 3.1 only) | `Resources:` | periwinkle | `resources` |
 
-Values are display strings: uptime reads `2d 3h 59m`, memory `387 MB free of 511 MB` (`12.4 GB free of 15.6 GB` from 4 GiB of total memory), display `1024 x 768, 32-bit`, terminal `xterm-256color, 120 x 30`, resources `72% free`. The values are never wrapped: a value too long for the line is cut at a character boundary.
+**Value formats.** Uptime is `2d 4h 17m`. Memory is `387 MB free of 511 MB`, switching to `12.4 GB free of 15.6 GB` once the total reaches 4 GiB. Display is `1024 x 768, 32-bit` (the depth is left off when unknown). Terminal is `xterm-256color, 120 x 30` (the size is left off when unknown). CPU is the brand or model text with runs of spaces collapsed, then the core count in brackets (`(8 cores)`) when more than one core is known. Shell is the interpreter's file name, lower-cased on DOS and Windows. Resources is `72% free`.
+
+**Architecture** appears in the OS row on every platform, from `uname().machine`, `hw.machine_arch`, `GetSystemInfo`, or the build's own `target_arch` as the last resort. Its name is one of `x86`, `x86_64`, `aarch64`, `arm`, `mips`, `mipsel`, `mips64el`, `riscv64`, `powerpc64le`. The form is `<os> (<arch>)` (`Debian GNU/Linux 13 (aarch64)`), except on Win32, which keeps the ReactOS form `<product> <release>-x86` for a known release on x86 so the ReactOS image prints what it prints today (`ReactOS 0.4.16-x86`).
+
+### What each platform reports
+
+A blank cell means the row is omitted on that platform.
+
+| Row | DOS | Windows 3.1 | Win32 (95 to 11, ReactOS) | Linux | FreeBSD | macOS | Desk |
+|---|---|---|---|---|---|---|---|
+| Title | Host from `INT 21h AX=5E00h` when a network redirector is loaded, else `%HOSTNAME%` or `%COMPUTERNAME%`; user from `%USER%` | `SYSTEM.INI [Network] UserName` and `ComputerName` (Windows for Workgroups) | `GetUserNameA`, `GetComputerNameA` | `$USER` or `$LOGNAME`, else the uid's name in `/etc/passwd`; `uname().nodename` | `$USER`, else the uid's name in `/etc/passwd`; `kern.hostname` | `$USER`; `kern.hostname` | |
+| OS | `INT 21h AH=30h` and `AX=3306h` (true version); MS-DOS, PC DOS or FreeDOS from the OEM byte, DR-DOS from `AX=4452h`; "under Windows 3.1 enhanced mode" from `INT 2Fh AX=1600h` | `GetVersion()`: Windows 3.10 or 3.11 and the DOS version | Registry `ProductName` and the `BuildLab` release, or the `GetVersionExA` platform on 9x | `PRETTY_NAME` from `/etc/os-release`, else `/usr/lib/os-release` | `kern.ostype` and `kern.osrelease` | `macOS` and `kern.osproductversion` | `Desk` and its version, and the track: `native` or `hosted on DOS` |
+| Kernel | DOS kernel version, and whether it is loaded high (`AX=3306h` DH bit 4) | Mode: enhanced or standard, from `GetWinFlags()` | `NT 5.2.3790 SP3`, or `Windows 95 4.00.950` | `uname` sysname and release | `kern.osrelease` and `kern.osrevision` | `Darwin` and `kern.osrelease` | Native: `desk-kernel` version; hosted: DOS version and DPMI host |
+| Host | BIOS date at `F000:FFF5` and model byte at `F000:FFFE`, when known | | | `/sys/devices/virtual/dmi/id/product_name`, or `/proc/device-tree/model` on ARM boards | `smbios.system.product` through `kenv`, when readable | `hw.model` (`Mac15,6`) | |
+| Uptime | Omitted: DOS has no boot clock, and the BIOS tick count resets at midnight | `GetTickCount()` since Windows started | `GetTickCount64` where present (Vista and later, looked up with `GetProcAddress`), else `GetTickCount`, which wraps at 49.7 days | `sysinfo().uptime` | `clock_gettime(CLOCK_UPTIME)` | `kern.boottime` against `gettimeofday` | Time since Desk started, once the SDK reports it |
+| CPU | 386, 486 or Pentium class from the EFLAGS AC and ID bits, then the `CPUID` vendor and brand string when present; FPU presence | 286, 386 or 486 and the coprocessor from `GetWinFlags()` | `GetSystemInfo` architecture and level, and the `CPUID` brand on x86 and x86_64 | `/proc/cpuinfo` `model name`, `Model`, `cpu model` (MIPS) or `uarch`; the core count | `hw.model`, `hw.ncpu` | `machdep.cpu.brand_string`, `hw.ncpu` | Once the SDK reports it; hosted: the DPMI processor byte |
+| Memory | Conventional (`INT 12h`), extended (`INT 15h AX=E801h`, else `AH=88h`), free from DPMI `INT 31h AX=0500h` | `GetFreeSpace(0)`, the free global heap | `GlobalMemoryStatusEx` where present (more than 4 GB), else `GlobalMemoryStatus` | `MemAvailable` of `MemTotal` from `/proc/meminfo` | `vm.stats.vm.v_free_count` × `hw.pagesize` of `hw.physmem` | `vm.page_free_count` × `hw.pagesize` of `hw.memsize` | Usable and free RAM, once the SDK reports it |
+| Display | Adapter from `INT 10h AX=1A00h` (VGA, EGA, MDA), VESA version and video memory from `INT 10h AX=4F00h`, text mode and rows from the BIOS data area | `GetSystemMetrics` size, `GetDeviceCaps` `BITSPIXEL × PLANES` or `NUMCOLORS` | `GetSystemMetrics`, `GetDeviceCaps` | | | | Mode and depth (`640 x 480, 8-bit`), once the SDK reports it |
+| Terminal | | | | `$TERM_PROGRAM` or `$TERM`; size from `TIOCGWINSZ` | As Linux | As Linux | |
+| Shell | `%COMSPEC%` | `SYSTEM.INI [boot] shell=` | `%COMSPEC%` | `$SHELL` | `$SHELL` | `$SHELL` | The shell's name, once Desk names it |
+| Resources | | `GetFreeSystemResources(GFSR_SYSTEMRESOURCES)` | | | | | |
+
+**Desk.** Desk exposes no system information to a module today, and a module must never touch hardware, so `AFETCH.DMD` reads nothing itself: until Desk offers the proposed `desk_sys_info` call (AF-D26, `docs/desk-sys-info.md`), it reports only the OS row, from what the build knows (`Desk` and the track the module was packed for). Every other Desk cell above is what that call would supply.
+
+**Where facts are parsed.** Text formats (`/proc/meminfo`, `/proc/cpuinfo`, `os-release`, `/etc/passwd`, the sysctl strings) are parsed by the core and tested on the host against captured files from real systems. A shell only makes the system calls.
+
+## 5 · Output
 
 ### Layout
 
-The logo is drawn on the left and the facts on the right, starting on the logo's second row, with the information column fixed by the logo (column 42 for `win32`). The logo is left out, and the facts stand alone, when the terminal is narrower than the information column plus 34. A width of 0 (unknown, as on a pipe) is taken as 80. When there are more fact lines than logo rows, they continue below the logo in the same column. Plain output has no trailing blank lines and no trailing spaces.
+- **Side by side.** The logo sits on the left and the title and facts start at the logo's information column (its width plus a 2-column gap; column 42 for `win32`), beginning on the logo's second row. Fact lines beyond the logo's rows continue below it in the same column. The logo is drawn beside the facts only when `columns ≥ info column + 34`: 72 columns for a 36-column logo, 76 for the 40-column `win32` logo.
+- **Narrow console.** Below that, the facts are printed alone. Values are cut at the right edge, never wrapped.
+- **Width.** From `TIOCGWINSZ` (Unix), `GetConsoleScreenBufferInfo` (Win32), the BIOS data area at `0040:004A` (DOS), or 80 when it cannot be read, which includes every pipe and file.
+- **`--no-logo`** prints the facts alone at any width.
+- Plain output has no trailing blank lines and no trailing spaces.
 
 ### Colour depth
 
-The depth is decided once at start, in this order:
+Decided once at start, first match wins:
 
-1. `--plain` or `--colour never`: none, with no escape sequences and the ASCII logo (the sun is `#`).
-2. `--colour mono`, `16`, `256` or `truecolour`: that depth, on a pipe too. `16` means console attributes where the platform is a Windows console or DOS.
-3. `--colour always`: the depth the terminal is detected to support, even on a pipe, and 16 colours when none is detected.
-4. `NO_COLOR` set and not empty: none.
-5. Output that is not a terminal: none, unless `CLICOLOR_FORCE` or `FORCE_COLOR` is set and not empty.
-6. Otherwise the detected depth. On Unix, `COLORTERM` of `truecolor` or `24bit` gives true colour, `TERM=dumb` none, a `TERM` ending `-256color` 256 colours, and anything else 16.
+1. `--plain` or `--colour never`: no colour.
+2. `--colour mono`, `16`, `256` or `truecolour`: that depth, even on a pipe. `16` means console attributes where the platform's own colour is console attributes (Win32 consoles, DOS).
+3. `--colour always`: the depth the platform detects, even on a pipe; 16 colours when nothing is detected.
+4. `NO_COLOR` set and not empty: no colour.
+5. Standard output is not a terminal (Unix `ioctl(TCGETS)` fails, Win32 `GetConsoleMode` fails, DOS `INT 21h AX=4400h` says it is not the console device): no colour, unless `CLICOLOR_FORCE` or `FORCE_COLOR` is set.
+6. The platform's detection:
+	- **Unix:** `COLORTERM` of `truecolor` or `24bit` gives true colour; `TERM=dumb` gives none; `TERM` ending `-256color` gives 256; anything else, the Linux console included, gives 16.
+	- **Win32:** true colour through VT sequences when `SetConsoleMode(ENABLE_VIRTUAL_TERMINAL_PROCESSING)` succeeds (Windows 10 1511 and later, Windows Terminal); otherwise 16 console attributes (AF-D13). Windows 9x and ReactOS take the attribute path.
+	- **DOS:** 16 BIOS attributes in a colour text mode; mono in mode 7 (MDA, Hercules).
+	- **Windows 3.1:** the nearest of the 16 VGA colours when the driver has 16 colours or fewer, exact RGB otherwise (AF-D15).
+	- **Desk:** none; the module writes plain lines to Desk's log.
 
-With colour, the sun is drawn as solid cells (a space on a coloured background) and the swatches are added. In mono, tones are drawn by weight (the sun and horizon bold, the deep water dim) and there are no swatches. Every ANSI line ends with a reset (`ESC [ 0 m`) when it was styled, so a scroll never paints the next line.
+### Rules
 
-### JSON
+1. **Plain output** (no colour, from any of the rules above): no escape sequences and no console calls, the ASCII form of the logo (the sun is `#`), and no swatches. Everything afterfetch draws itself is ASCII; values are written as the system gave them. Line ends are `\n` on Unix and `\r\n` on DOS and Windows.
+2. **Restore.** Every line ends by restoring the console's own attribute (Win32, DOS) or with `ESC[0m` (Unix), and so does the program, so a scroll never paints the next line and the prompt keeps its colours.
+3. **Mono** uses weight, not colour: the sun and horizon bold, the deep water dim (`ESC[1m`, `ESC[2m`) on Unix, the intensity bit on DOS and MDA, so the sun stays visible on a green screen. Mono has no swatches.
+4. **Block glyphs.** The colour logo is drawn with half blocks (`▀ ▄ █`) in UTF-8 on Unix when `LC_ALL`, `LC_CTYPE` or `LANG` names UTF-8, and otherwise as cells (spaces with a background colour). DOS uses the CP437 half blocks `0xDF 0xDC 0xDB`. With colour and no half blocks the sun is solid cells. Win32 consoles use cells, which need no font glyph, and half blocks only in VT mode when `SetConsoleOutputCP(65001)` succeeds.
+5. **DOS blink.** While drawing background-coloured cells, DOS turns blink off (`INT 10h AX=1003h BL=0`) so all 16 background colours show, and turns it back on before exit.
+6. **Architecture accent.** The title's rule is drawn in the architecture's accent tone so a row of screenshots tells the arches apart: x86 and x86_64 gold, ARM (32 and 64-bit) periwinkle, MIPS violet, RISC-V teal, PowerPC coral.
 
-`--json` prints one line: `{"user":…,"hostname":…,"os":…,"kernel":…,"model":…,"uptime":…,"cpu":…,"memory":…,"display":…,"terminal":…,"shell":…,"resources":…}`. The keys and their order are stable. Every value is a string, or `null` when the platform cannot report it. Valid UTF-8 passes through; any other byte from 0x80 up is written as the `\u00XX` escape of the Latin-1 character with that number, so the output is always valid JSON.
+### Windows 3.1 window
 
-## Interfaces
+`AFETCHW.EXE` opens a small fixed-size window captioned "afterfetch". The logo is painted as 4 × 4 px pixels (144 × 96 px for a 36 × 24-pixel logo) and the facts in `OEM_FIXED_FONT`, one `TextOut` per run of one colour. Esc, Enter, a click or closing the window ends it. Ctrl+C copies the plain text form to the clipboard as `CF_TEXT`.
 
-`afterfetch-core` is `no_std`, allocates nothing and does not panic on any input. A platform shell is an entry point, its system calls and two trait implementations, handed to `afterfetch_core::run(platform, terminal, argv)`, where `argv` is the arguments after the program's name.
+### Desk module
+
+`AFETCH.DMD` renders the plain form and hands each line to `desk_log`, one log line per output line, then returns from `app_start`. A window version over Desk's SDK, drawing the logo with Desk's own palette, follows once that SDK exists (§13).
+
+## 6 · JSON output
+
+`--json` writes one JSON object on one line, followed by the platform's line end, with no logo and no colour. Keys always appear, in this order; a fact the platform cannot report is `null`. Every other value is a string: the same text the plain output prints.
+
+```json
+{"user":"ada","hostname":"dusk","os":"Debian GNU/Linux 13 (x86_64)","kernel":"Linux 6.12.48","model":"ThinkPad X1 Carbon Gen 11","uptime":"2d 4h 17m","cpu":"Intel(R) Core(TM) i7-1365U (12 cores)","memory":"18.2 GB free of 31.1 GB","display":null,"terminal":"xterm-256color, 120 x 30","shell":"zsh","resources":null}
+```
+
+| Key | Value |
+|---|---|
+| `user`, `hostname` | The title's two halves |
+| `os`, `kernel`, `model`, `uptime`, `cpu`, `memory`, `display`, `terminal`, `shell`, `resources` | The rows of §4 |
+
+**Encoding.** `"`, `\`, control characters and DEL are escaped. Valid UTF-8 passes through; any other byte from 0x80 up (CP437 on DOS, say) is written as the `\u00XX` escape of the Latin-1 character with that number, so the output is always valid JSON.
+
+**Stability.** From 0.1.0 on, a key is never renamed or removed, its meaning never changes, and the order stays. New keys may only be added at the end. A consumer should ignore keys it does not know and treat every key as possibly `null`. Values are display text and may change form between releases.
+
+## 7 · Logos
+
+Every logo is the same Afterglow sun, gold at the crown through orange to coral at the horizon, cut by a rose horizon line. What changes per system is the horizon, the time of day and the way it is drawn. No logo borrows a trademark. The art language is in `docs/art.md`, the blob format in `docs/logo-format.md`.
+
+| Name | Default on | Idea |
+|---|---|---|
+| `afterglow` | anything not listed below | The plain sun half-set on a single rose line |
+| `dos` | DOS (`AFETCH.EXE`, also in a Windows 3.1 DOS box) | A pixel-chunky sunrise behind CRT scanlines, in the 16 VGA colours |
+| `win16` | Windows 3.1 (`AFETCHW.EXE`) | A bevelled sun on a grid of tiles |
+| `win32` | Windows 95 to 11, ReactOS | Dusk over water: the existing ReactOS picture, unchanged |
+| `linux` | Linux | The sun setting onto a shell prompt horizon ending in a block cursor |
+| `freebsd` | FreeBSD | A deeper ember sun behind a low mountain ridge |
+| `macos` | macOS | A soft glass sun with a still-water reflection |
+| `desk` | Desk | The sun wearing Desk's stepped halo on the Void, over Desk's stepped horizon, in Desk's 16 colours |
+
+- `--logo list` prints these names in this order. Every binary carries every logo (AF-D10), so `--logo` works everywhere.
+- **Size.** A logo is at most 36 columns × 12 rows of cells (36 × 24 pixels at half-block resolution). The `win32` ASCII form keeps its existing 40 columns so the ReactOS output stays byte-for-byte the same.
+- **Forms.** Half blocks, cells, or a hand-authored ASCII form of the same size; the ASCII form is what plain output and pipes get.
+- **Architecture** is never drawn: it is text in the OS row and the accent of the rule (§5).
+
+## 8 · Interfaces
+
+`afterfetch-core` is `no_std`, allocates nothing and does not panic on any input. A platform shell is an entry point, its system calls and two trait implementations, handed to `afterfetch_core::run(platform, terminal, argv)`, where `argv` is the arguments after the program's name (AF-D31).
 
 - `Platform` fills `Facts` with what it can read, reports `TerminalInfo` (is it a terminal, its width, the colour depth it supports and whether it draws UTF-8), answers environment lookups, names the default logo and may name its target for `--version`.
 - `Terminal` takes `write(bytes)`, `set_style(Style)` and `end_line()`. A `Style` is a foreground and background `Paint` (the terminal's own colour, a `Tone`, or one of the 16 console slots for swatches) and a `Weight`. A console shell turns a style into an attribute call. `AnsiTerminal` turns styles into escape sequences for `Mono`, `Ansi16`, `Ansi256` and `TrueColour` over any `ByteSink`, ending lines with `\n` or `\r\n` as the shell chooses.
 - `Depth` is `None`, `Mono`, `Ansi16` (SGR numbering: red is 1, blue is 4), `Ansi256`, `TrueColour` and `Console16` (console numbering: blue is 1, red is 4).
 - Console slots hold the Afterglow Dusk table, and every `Tone` maps to a slot: gold 14, orange 6, coral 12, rose 4, lilac 13, violet 5, periwinkle 1, slate 8. `Ansi16` swaps the red and blue bits, `Ansi256` takes the nearest cube or grey entry, `TrueColour` the table's RGB.
 
-## Settings and defaults
+## 9 · Settings and defaults
 
-To be written.
+There is no configuration file. The program reads only these environment variables:
 
-## Security and privacy
+| Variable | Effect |
+|---|---|
+| `NO_COLOR` | Set and not empty: no colour unless asked for explicitly (§5) |
+| `CLICOLOR_FORCE`, `FORCE_COLOR` | Colour on a pipe |
+| `COLORTERM`, `TERM` | Colour depth on Unix |
+| `LC_ALL`, `LC_CTYPE`, `LANG` | UTF-8 half blocks on Unix |
+| `USER`, `LOGNAME`, `SHELL`, `TERM_PROGRAM` | Facts on Unix (§4) |
+| `HOSTNAME`, `COMPUTERNAME`, `USER`, `COMSPEC` | Facts on DOS; `COMSPEC` on Win32 |
+| `AF_DUMP` | DOS test hook: after drawing, write the text-mode screen's characters and attributes to the named file |
 
-To be written.
+Defaults: `--logo auto`, `--colour auto`, logo shown when it fits.
 
-## Limits
+## 10 · Security and privacy
 
-To be written.
+- No network access, no telemetry, no writes, except the file named by `/DUMP` (Windows 3.1) or `AF_DUMP` (DOS tests).
+- The output includes the user and host names, which a user pasting it into a bug report may want to remove. `--json` includes them too.
+- Files read: `/etc/os-release`, `/usr/lib/os-release`, `/proc/meminfo`, `/proc/cpuinfo`, `/etc/passwd` (only to name the current uid), `/sys/devices/virtual/dmi/id/product_name`, `/proc/device-tree/model` and, on Windows 3.1, `SYSTEM.INI`. Nothing else is opened.
+- The Linux build makes only these system calls: `read`, `write`, `openat`, `close`, `ioctl` (`TCGETS`, `TIOCGWINSZ`), `uname`, `sysinfo`, `getuid`, `exit_group`. FreeBSD adds `__sysctl`, `clock_gettime` and `kenv` and uses `exit`. Win32 imports only the ANSI functions on its allow-list. The Desk module imports only `desk_log` and `desk_panic` (and `desk_sys_info` once it exists).
+- The core never panics on any input, including truncated logo blobs and arbitrary argument bytes; a panic in a shell exits 70.
+
+## 11 · Limits and size budgets
+
+Every release binary must fit its budget; `scripts/check-sizes.sh` reads `sizes.toml` and a build over budget fails `make check`.
+
+| Target | Budget |
+|---|---|
+| Win32 i586 | 16 KiB |
+| Win32 x86_64, ARM64 | 20 KiB |
+| Linux, FreeBSD (any arch) | 24 KiB |
+| macOS (each arch) | 64 KiB |
+| DOS `AFETCH.EXE` | 64 KiB, CWSDPMI stub included |
+| Windows 3.1 `AFETCHW.EXE` | 24 KiB file; code segment `MAIN` 20,000 bytes; DGROUP 16 KiB |
+| Desk `AFETCH.DMD` | 16 KiB (the later window version 24 KiB) |
+| All logo blobs together | 7 KiB |
+
+Other limits: a fact value is at most 64 bytes, a user or host name at most 32; a logo at most 36 × 12 cells (`win32` 40 × 12); the DOS floor is a 386 with DPMI (AF-D16), the 32-bit x86 floor elsewhere is a Pentium without SSE2 (AF-D19), Desk's is a 486, and Windows 3.1's is a 386 in enhanced mode.
+
+## 12 · Releases and reproducibility
+
+**Reproducible.** Every target is built twice, in different directories, by `make repro`, and the two outputs must be byte-identical (`cmp`). Builds embed no paths, times or host names: `--remap-path-prefix`, `-Z location-detail=none`, `--build-id=none` on ELF, `/Brepro` and `/DEBUG:NONE` on PE, content-hashed `LC_UUID` on Mach-O. Release zips use fixed timestamps (`TZ=UTC`, `touch -d @0`, `zip -X -D`), so two `make dist` runs give the same `SHA256SUMS`.
+
+**Release files.** `afterfetch-<version>-<target name>` for Unix (`afterfetch-0.1.0-linux-aarch64`), the same with `.exe` for Win32 (`afterfetch-0.1.0-windows-i586.exe`), and zips for the rest: `afterfetch-<version>-dos.zip` (`AFETCH.EXE`, `README.TXT` in CP437 with CRLF), `afterfetch-<version>-win16.zip` (`AFETCHW.EXE`, `README.TXT`) and `afterfetch-<version>-desk.zip` (`AFETCH.DMD`, marked "waiting on Desk's loader" until Checkpoint D passes). `SHA256SUMS` covers all of them, sorted.
+
+## 13 · Platform matrix and verification
+
+What "verified" means for each target. **Local** means the program runs on this machine (natively or emulated) and passes the shape check: plain output with no escape bytes, the expected labels in order, every line within 80 columns, and `--json` parsing with the expected keys. **Structure** means built and checked without running (file format, imports, size). Nothing is verified yet; the column shows what each target is held to.
+
+| Platform | Arch | Held to | How | Checkpoint |
+|---|---|---|---|---|
+| Linux | x86_64, i586 | Local | Native, plain, JSON and a pseudo-terminal colour run | Slice (Checkpoint A) |
+| Linux | aarch64, armv7, armv6 | Local, emulated | qemu-user | — |
+| Linux | mips, mipsel (mips64el optional) | Local, emulated | qemu-user | **Go/no-go** (AF-D22): tier-3 target and experimental `asm!` |
+| Linux | riscv64, ppc64le | Local, emulated | qemu-user | After MIPS goes |
+| FreeBSD | x86_64, i686 | Local, in a VM | The FreeBSD amd64 cloud image under QEMU | **Go/no-go** (AF-D23): build-only plus structure checks if the VM automation is not reliable |
+| FreeBSD | aarch64 | Structure | ELF brand, static, size | Run unverified until an aarch64 VM or hardware exists |
+| macOS | aarch64, x86_64 | Structure locally; CI later | Mach-O load commands and symbols; runs on a GitHub macOS runner after the move to GitHub (AF-D5) | **Go/no-go** on the first CI run |
+| Win32 | i586, x86_64 | Local, emulated | Wine; Windows 95 in DOSBox-X once per release; the ReactOS guest in reactos-liminal is the real-console proof | Slice (Checkpoint A) for i586 |
+| Win32 | aarch64 | Structure locally; CI later | PE checks; runs on a GitHub Windows ARM64 runner after the move (AF-D5) | — |
+| DOS | i386 | Local, emulated | DOSBox Staging, plain and colour (screen read back); FreeDOS in QEMU once per release | **Go/no-go**: plain and colour runs pass and the size fits |
+| Windows 3.1 | i386 | Local, emulated | Wine `/DUMP`; Windows for Workgroups 3.11 in DOSBox-X with screenshots | **Go/no-go** (AF-D24): the DOS build is the Windows 3.1 answer if no stable window in two builder sessions |
+| Desk | i486 | Structure and host | `dmdpack info` and `cross`, a 486 instruction scan, size, and the module's logic run on the host; runs in Desk's emulators once Desk has a loader | **Go/no-go** (Checkpoint D, AF-D28): re-checked each release, never blocks other platforms |
+
+Not verified anywhere: real hardware of any kind (ARM boards, MIPS routers, a 486, MDA and Hercules adapters beyond DOSBox's emulation), Windows 3.0 and Windows 3.1 standard or real mode, and real ARM or MIPS kernels (qemu-user uses the host's).
