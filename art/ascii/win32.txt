@@ -1,0 +1,24 @@
+                 .   .   .
+                 l   l   l
+           .      \  :  /      .
+           l      g  g  g      l
+               .   \ : /   .
+               l   g g g   l
+                .:########:.
+                gggggggggggg
+            .:##############:.
+            gggggggggggggggggg
+           :##################:
+           oooooooooooooooooooo
+       ====:##################:====
+       rrrrccccccccccccccccccccrrrr
+      ----------------------------------
+      rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
+       ~~~~  ~~~~~~~~~  ~~~~~~~  ~~~~
+       llll  vvvvvvvvv  lllllll  vvvv
+         ~~~~~~~  ~~~~~~~~~~  ~~~~~~
+         vvvvvvv  pppppppppp  vvvvvv
+            ~~~~~~~~~~  ~~~~~~~~~
+            pppppppppp  sssssssss
+               ~~~~~~~~~~~~~~
+               ssssssssssssss

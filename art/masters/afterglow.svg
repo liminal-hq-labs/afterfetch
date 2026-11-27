@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+afterglow logo master: the plain Afterglow sun, half set on one rose horizon line, for systems with no logo of their own
+
+(c) Copyright 2026 Liminal HQ, Scott Morris
+SPDX-License-Identifier: Apache-2.0 OR MIT
+
+Grid: 36 x 24 logo pixels (36 columns x 12 rows of half-block cells), 10 units each, drawn inside one scale(10) group so
+every coordinate below is a whole pixel. Fills are tone colours from art/palette/afterglow-dusk.toml only; nothing is
+antialiased, so rsvg-convert at 36 x 24 gives exactly one tone per pixel. docs/art.md has the rules.
+
+The sun is a disc of radius 12 centred on the horizon at (18, 18), sampled at pixel centres, in five stepped bands from
+the crown down: gold, amber, orange, peach, coral. At 16 colours amber and peach become orange, leaving gold crown,
+orange body and coral foot. The rose line runs from x 1 to 35 on row 18; rows 19 to 23 stay empty.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="240" viewBox="0 0 360 240" shape-rendering="crispEdges">
+<title>afterglow</title>
+<g transform="scale(10)">
+<g id="sun">
+<path id="gold" fill="#ffd08e" d="M15 6H21V7H24V8H25V9H11V8H12V7H15Z"/>
+<path id="amber" fill="#ffbd67" d="M10 9H26V10H27V11H9V10H10Z"/>
+<path id="orange" fill="#ffaa40" d="M8 11H28V12H29V13H7V12H8Z"/>
+<path id="peach" fill="#fca073" d="M7 13H29V15H7Z"/>
+<path id="coral" fill="#f995a6" d="M6 15H30V18H6Z"/>
+</g>
+<path id="horizon" fill="#f43f5e" d="M1 18H35V19H1Z"/>
+</g>
+</svg>

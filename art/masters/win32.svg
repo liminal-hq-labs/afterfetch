@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+win32 logo master: the Afterglow sun at dusk over water, for Windows 95 to 11 and ReactOS
+
+(c) Copyright 2026 Liminal HQ, Scott Morris
+SPDX-License-Identifier: Apache-2.0 OR MIT
+
+Grid: 36 x 24 logo pixels (36 columns x 12 rows of half-block cells), 10 units each, drawn inside one scale(10) group so
+every coordinate below is a whole pixel. Fills are tone colours from art/palette/afterglow-dusk.toml only; nothing is
+antialiased, so rsvg-convert at 36 x 24 gives exactly one tone per pixel. docs/art.md has the rules.
+
+The picture is the reactos-liminal afterfetch sunset (art/ascii/win32.txt) at twice its vertical resolution: one text
+row is two pixel rows, centred on column 17. Lilac sparks and three gold rays above; a disc of radius 9.5 centred on the
+horizon at (17.5, 14) in the text's bands, gold for its upper five rows, orange for two, coral for two; short rose bars
+either side of its foot; the rose horizon on row 14; then four rows of ripples on the even rows 16 to 22, lilac and violet
+near the horizon, then periwinkle, then slate, as in the text. Odd rows below the horizon stay empty, so each ripple is
+the upper half of a cell.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="240" viewBox="0 0 360 240" shape-rendering="crispEdges">
+<title>win32</title>
+<g transform="scale(10)">
+<g id="sky">
+<path id="sparks" fill="#e4b8f8" d="M11 0h1v1h-1ZM17 0h1v1h-1ZM23 0h1v1h-1ZM7 2h1v1h-1ZM27 2h1v1h-1ZM11 4h1v1h-1ZM23 4h1v1h-1Z"/>
+<path id="rays" fill="#ffd08e" d="M13 2h1v1h-1ZM17 2h1v1h-1ZM21 2h1v1h-1ZM14 3h1v1h-1ZM17 3h1v1h-1ZM20 3h1v1h-1ZM15 4h1v1h-1ZM17 4h1v1h-1ZM19 4h1v1h-1Z"/>
+</g>
+<g id="sun">
+<path id="gold" fill="#ffd08e" d="M13 5H22V6H23V7H24V8H25V9H26V10H9V9H10V8H11V7H12V6H13Z"/>
+<path id="orange" fill="#ffaa40" d="M9 10H26V11H27V12H8V11H9Z"/>
+<path id="coral" fill="#f995a6" d="M8 12H27V14H8Z"/>
+</g>
+<path id="horizon" fill="#f43f5e" d="M4 13h4v1h-4ZM27 13h4v1h-4ZM0 14h35v1h-35Z"/>
+<g id="water">
+<path id="lilac" fill="#e4b8f8" d="M2 16h4v1h-4ZM19 16h7v1h-7Z"/>
+<path id="violet" fill="#c98be6" d="M8 16h9v1h-9ZM28 16h4v1h-4ZM4 18h7v1h-7ZM25 18h6v1h-6Z"/>
+<path id="periwinkle" fill="#7f95f2" d="M13 18h10v1h-10ZM7 20h10v1h-10Z"/>
+<path id="slate" fill="#7c8796" d="M19 20h9v1h-9ZM10 22h14v1h-14Z"/>
+</g>
+</g>
+</svg>
