@@ -9,7 +9,7 @@ use core::mem::MaybeUninit;
 use core::ptr::null_mut;
 
 use afterfetch_core::format::{c_str, format_display, format_kernel, format_memory, format_os, format_shell, format_uptime_ms};
-use afterfetch_core::{Buf, Depth, FactKey, Facts, LogoName, Platform, TerminalInfo, run};
+use afterfetch_core::{Buf, Depth, FactKey, Facts, Platform, TerminalInfo, default_logo, run};
 use afterfetch_win32::cmdline::CommandLine;
 
 use crate::sys::*;
@@ -218,8 +218,8 @@ impl Platform for Windows {
 		self.var(name)
 	}
 
-	fn default_logo(&self) -> LogoName {
-		LogoName::Win32
+	fn default_logo(&self) -> &'static str {
+		default_logo("win32")
 	}
 
 	fn target_name(&self, out: &mut Buf<32>) {
