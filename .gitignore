@@ -23,6 +23,7 @@ __pycache__/
 # Build and release output
 /vendor/
 /platforms/*/target/
+/platforms/*/dist/
 /platforms/*/vendor/
 
 # Regenerable art previews

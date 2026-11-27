@@ -6,11 +6,12 @@
 export CARGO_BUILD_JOBS ?= 4
 
 .PHONY: check check-fast headers fmt clippy test deny art art-check test-art clippy-unix build-unix check-unix smoke-linux-native repro-unix
+.PHONY: fmt-win32 clippy-win32 test-win32 build-win32 check-win32 smoke-wine repro-win32
 
 UNIX_TARGETS := x86_64-unknown-linux-musl i586-unknown-linux-musl
 
 # Every later work package adds its builds, size checks and smokes to `check`.
-check: check-fast deny clippy-unix build-unix check-unix smoke-linux-native repro-unix
+check: check-fast deny clippy-unix build-unix check-unix smoke-linux-native repro-unix fmt-win32 clippy-win32 test-win32 build-win32 check-win32 smoke-wine repro-win32
 
 check-fast: headers fmt clippy test test-art art-check
 
@@ -55,3 +56,26 @@ smoke-linux-native: build-unix
 
 repro-unix:
 	bash scripts/repro-unix.sh $(UNIX_TARGETS)
+
+# Win32 (i586): its own workspace, so its formatting, lints and host tests run from its folder. Then the build, the structure, import and
+# Pentium checks with the size budget, the Wine smoke, and reproducibility.
+fmt-win32:
+	cd platforms/win32 && cargo fmt --all -- --check
+
+clippy-win32:
+	bash platforms/win32/build.sh i586 clippy
+
+test-win32:
+	cd platforms/win32 && cargo nextest run --lib --locked --no-tests=pass --target $$(rustc -vV | sed -n 's/^host: //p')
+
+build-win32:
+	bash platforms/win32/build.sh i586
+
+check-win32: build-win32
+	bash platforms/win32/check.sh
+
+smoke-wine: build-win32
+	bash scripts/smoke/wine.sh
+
+repro-win32:
+	bash scripts/repro-win32.sh

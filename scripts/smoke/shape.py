@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
-# Checks the shape of afterfetch's output without comparing values, which differ on every machine.
-#
-#   shape.py plain <binary> <labels file> [--runner <emulator>]    plain output, the labels in order, no escapes, --json keys
-#   shape.py colour <capture file> <none|16|256|truecolour>        what a terminal run drew, from a captured pty stream
-#
-# A labels file lists one label per line in print order. A trailing `?` marks a label that may be absent.
-#
+# Checks the shape of afterfetch's output without comparing values, which differ on every machine. Usage:
+#   shape.py plain <binary> <labels file> [--runner <emulator>] [--windows [--golden <file>]]
+#   shape.py colour <capture file> <none|16|256|truecolour>
+# `--windows`: CR LF line ends, no desktop row, no escapes on a pipe at any depth; `--golden` compares the win32 logo's columns.
 # (c) Copyright 2026 Liminal HQ, Scott Morris
 # SPDX-License-Identifier: Apache-2.0 OR MIT
+# A labels file lists one label per line in print order. A trailing `?` marks a label that may be absent.
 
 import json
 import os
@@ -51,10 +49,24 @@ def read_labels(path):
 	return labels
 
 
+WINDOWS = False
+LOGO_COLUMNS = 42
+LOGO_ROWS = 12
+
+
+def lines_of(output, what):
+	"""The output with Windows line ends turned into plain ones, after checking that every line end is the right kind."""
+	if WINDOWS:
+		expect(output.count(b"\n") == output.count(b"\r\n"), f"{what}: a bare line feed on a Windows line")
+		return output.replace(b"\r\n", b"\n")
+	return output
+
+
 def check_plain_text(output, what):
+	output = lines_of(output, what)
 	expect(all(byte < 0x80 for byte in output), f"{what}: a byte of 0x80 or more in plain output")
 	expect(b"\x1b" not in output, f"{what}: an escape sequence in plain output")
-	expect(b"\r" not in output, f"{what}: a carriage return on a Unix line")
+	expect(b"\r" not in output, f"{what}: a stray carriage return")
 	expect(output.endswith(b"\n"), f"{what}: output does not end in a newline")
 	for number, line in enumerate(output.decode("ascii").split("\n")[:-1], 1):
 		expect(len(line) <= MAX_COLUMNS, f"{what}: line {number} is {len(line)} columns")
@@ -70,13 +82,30 @@ def check_labels(lines, labels):
 			position = found + 1
 
 
-def check_plain(command, labels_path):
+def without_uptime(output):
+	"""The output's lines but the uptime, which may tick over to the next minute between two runs."""
+	return [line for line in output.split(b"\n") if b"Uptime:" not in line]
+
+
+def check_golden(command, golden_path):
+	with open(golden_path, encoding="ascii") as handle:
+		golden = handle.read().split("\n")[:LOGO_ROWS]
+	drawn = run(command + ["--logo", "win32", "--plain"])
+	expect(drawn.returncode == 0, f"--logo win32 --plain exited {drawn.returncode}")
+	got = lines_of(drawn.stdout, "golden").decode("ascii").split("\n")[:LOGO_ROWS]
+	expect(len(got) == LOGO_ROWS, "fewer logo rows than the golden")
+	for number, (want, have) in enumerate(zip(golden, got), 1):
+		expect(want[:LOGO_COLUMNS].rstrip() == have[:LOGO_COLUMNS].rstrip(), f"logo row {number}: {have[:LOGO_COLUMNS]!r} is not {want[:LOGO_COLUMNS]!r}")
+	print("logo equals the reactos-liminal golden")
+
+
+def check_plain(command, labels_path, golden_path=None):
 	labels = read_labels(labels_path)
 
 	facts = run(command + ["--plain", "--no-logo"])
 	expect(facts.returncode == 0, f"--plain --no-logo exited {facts.returncode}")
 	check_plain_text(facts.stdout, "facts")
-	lines = facts.stdout.decode("ascii").split("\n")[:-1]
+	lines = lines_of(facts.stdout, "facts").decode("ascii").split("\n")[:-1]
 	expect(len(lines) >= 4, "too few lines")
 	expect(re.fullmatch(r"\S+@\S+|\S+", lines[0]) is not None, f"title line {lines[0]!r}")
 	expect(set(lines[1]) == {"-"}, f"rule line {lines[1]!r}")
@@ -85,14 +114,15 @@ def check_plain(command, labels_path):
 	picture = run(command + ["--plain"])
 	expect(picture.returncode == 0, f"--plain exited {picture.returncode}")
 	check_plain_text(picture.stdout, "picture")
-	expect(len(picture.stdout.splitlines()) >= len(lines), "the picture has fewer lines than the facts")
+	expect(len(lines_of(picture.stdout, "picture").splitlines()) >= len(lines), "the picture has fewer lines than the facts")
 
 	piped = run(command)
-	expect(piped.stdout == picture.stdout, "a pipe does not get the same output as --plain")
+	expect(without_uptime(piped.stdout) == without_uptime(picture.stdout), "a pipe does not get the same output as --plain")
 
 	data = run(command + ["--json"])
 	expect(data.returncode == 0, f"--json exited {data.returncode}")
-	expect(data.stdout.count(b"\n") == 1 and data.stdout.endswith(b"\n"), "--json is not one line")
+	one_line = lines_of(data.stdout, "--json")
+	expect(one_line.count(b"\n") == 1 and one_line.endswith(b"\n"), "--json is not one line")
 	decoded = json.loads(data.stdout, object_pairs_hook=lambda pairs: pairs)
 	expect([key for key, _ in decoded] == JSON_KEYS, f"--json keys {[key for key, _ in decoded]}")
 	values = dict(decoded)
@@ -100,7 +130,10 @@ def check_plain(command, labels_path):
 		expect(value is None or isinstance(value, str), f"--json {key} is {value!r}")
 	for key in JSON_REQUIRED:
 		expect(values[key], f"--json {key} is empty")
-	expect(values["display"] is None, "a console program reported a display")
+	if WINDOWS:
+		expect(values["desktop"] is None, "a Windows console program named a desktop")
+	else:
+		expect(values["display"] is None, "a console program reported a display")
 	expect(values["resources"] is None, "a Windows 3.1 fact on Unix")
 
 	version = run(command + ["--version"])
@@ -109,13 +142,23 @@ def check_plain(command, labels_path):
 	bad = run(command + ["--no-such-option"])
 	expect(bad.returncode == 2 and bad.stdout == b"" and bad.stderr, "a bad option gives exit 2 and a message on stderr")
 
-	desktop = run(command + ["--json"], {"XDG_CURRENT_DESKTOP": "Sunset"})
-	expect(json.loads(desktop.stdout)["desktop"] == "Sunset", "XDG_CURRENT_DESKTOP is not reported")
-	quiet = run(command + ["--json"], {"XDG_CURRENT_DESKTOP": ""})
-	expect(json.loads(quiet.stdout)["desktop"] is None, "an empty XDG_CURRENT_DESKTOP gave a row")
+	if WINDOWS:
+		# A pipe never gets escape sequences from the Win32 program, whatever depth is asked for (the console path is attributes).
+		for depth in ("16", "256", "truecolour", "mono"):
+			asked = run(command + ["--colour", depth])
+			expect(b"\x1b" not in asked.stdout, f"--colour {depth} wrote an escape sequence to a pipe")
+		slash = run(command + ["/PLAIN", "/NOLOGO"])
+		expect(without_uptime(slash.stdout) == without_uptime(facts.stdout), "/PLAIN /NOLOGO differs from --plain --no-logo")
+		if golden_path:
+			check_golden(command, golden_path)
+	else:
+		desktop = run(command + ["--json"], {"XDG_CURRENT_DESKTOP": "Sunset"})
+		expect(json.loads(desktop.stdout)["desktop"] == "Sunset", "XDG_CURRENT_DESKTOP is not reported")
+		quiet = run(command + ["--json"], {"XDG_CURRENT_DESKTOP": ""})
+		expect(json.loads(quiet.stdout)["desktop"] is None, "an empty XDG_CURRENT_DESKTOP gave a row")
 
-	forced = run(command + ["--colour", "truecolour"], {"NO_COLOR": "1"})
-	expect(b"\x1b[0m" in forced.stdout and b"38;2;" in forced.stdout, "--colour truecolour did not draw colour on a pipe")
+		forced = run(command + ["--colour", "truecolour"], {"NO_COLOR": "1"})
+		expect(b"\x1b[0m" in forced.stdout and b"38;2;" in forced.stdout, "--colour truecolour did not draw colour on a pipe")
 	print("plain shape: ok")
 
 
@@ -143,10 +186,13 @@ def check_colour(capture_path, depth):
 def main(argv):
 	try:
 		if len(argv) >= 4 and argv[1] == "plain":
+			global WINDOWS
+			WINDOWS = "--windows" in argv
+			golden = argv[argv.index("--golden") + 1] if "--golden" in argv else None
 			command = argv[2:3]
 			if "--runner" in argv:
 				command = [argv[argv.index("--runner") + 1]] + command
-			check_plain(command, argv[3])
+			check_plain(command, argv[3], golden)
 		elif len(argv) == 4 and argv[1] == "colour":
 			check_colour(argv[2], argv[3])
 		else:
