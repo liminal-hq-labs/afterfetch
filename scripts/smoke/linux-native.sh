@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Runs the Linux binaries on this machine and checks their output by shape. Usage: linux-native.sh [x86_64|i586 ...] (default: both)
+# Runs the Linux binaries and checks their output by shape. Usage: linux-native.sh [x86_64|i586|aarch64|armv7|armv6 ...] (default: all)
 #
-# Plain output and --json come from a pipe (`shape.py plain`). Colour comes from a pseudo-terminal made with `script -qec`, at 16, 256 and
-# true colour and with TERM=dumb. The i586 binary runs natively when the kernel allows 32-bit programs, otherwise under qemu-i386-static,
-# and otherwise the smoke says SKIP and the build is unverified.
+# The Arm binaries run under qemu-user, called by name, as a Pi-like core (QEMU_CPU); the README says what that does not prove.
+#
+# Plain and --json come from a pipe (`shape.py plain`); colour from `script -qec` at 16, 256, true colour and TERM=dumb. i586 runs natively
+# when the kernel allows, else under qemu-i386-static, else SKIP.
 #
 # (c) Copyright 2026 Liminal HQ, Scott Morris
 # SPDX-License-Identifier: Apache-2.0 OR MIT
@@ -22,17 +23,32 @@ if ! command -v python3 >/dev/null; then
 fi
 
 arches=("$@")
-[ "${#arches[@]}" -gt 0 ] || arches=(x86_64 i586)
+[ "${#arches[@]}" -gt 0 ] || arches=(x86_64 i586 aarch64 armv7 armv6)
 
 smoke_one() {
 	local arch="$1"
-	local binary="$root/target/$arch-unknown-linux-musl/release/afterfetch"
+	local triple="$arch-unknown-linux-musl"
 	local runner=()
+	local cpu=""
+	unset QEMU_CPU
+	case "$arch" in
+	armv7) triple=armv7-unknown-linux-musleabihf cpu=cortex-a7 runner=(qemu-arm-static) ;;
+	armv6) triple=arm-unknown-linux-musleabihf cpu=arm1176 runner=(qemu-arm-static) ;;
+	aarch64) cpu=cortex-a72 runner=(qemu-aarch64-static) ;;
+	esac
+	local binary="$root/target/$triple/release/afterfetch"
 	if [ ! -x "$binary" ]; then
 		echo "SKIP smoke-linux-native $arch: $binary not built"
 		return 0
 	fi
-	if ! "$binary" --version >/dev/null 2>&1; then
+	if [ "${#runner[@]}" -gt 0 ]; then
+		if ! command -v "${runner[0]}" >/dev/null; then
+			echo "SKIP smoke-linux-native $arch: ${runner[0]} is not installed (unverified)"
+			return 0
+		fi
+		echo "note: $arch runs under ${runner[0]} with the $cpu processor model, not the kernel"
+		export QEMU_CPU="$cpu"
+	elif ! "$binary" --version >/dev/null 2>&1; then
 		if command -v qemu-i386-static >/dev/null && [ "$arch" = i586 ]; then
 			runner=(qemu-i386-static)
 			echo "note: $arch runs under qemu-i386-static, not the kernel"

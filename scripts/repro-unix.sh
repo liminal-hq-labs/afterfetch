@@ -11,7 +11,7 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 targets=("$@")
-[ "${#targets[@]}" -gt 0 ] || targets=(x86_64-unknown-linux-musl i586-unknown-linux-musl)
+[ "${#targets[@]}" -gt 0 ] || targets=(x86_64-unknown-linux-musl i586-unknown-linux-musl aarch64-unknown-linux-musl armv7-unknown-linux-musleabihf arm-unknown-linux-musleabihf)
 work="${HOME}/.cache/afterfetch/repro-unix"
 rm -rf "$work"
 mkdir -p "$work"
