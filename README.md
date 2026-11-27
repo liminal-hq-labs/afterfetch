@@ -38,7 +38,7 @@ target/x86_64-unknown-linux-musl/release/afterfetch
 | FreeBSD | x86_64, ARM64 | x86_64 runs in the official 15.1 image under QEMU; ARM64 built and structure-checked, never run |
 | macOS | ARM64, x86_64 | built and structure-checked here; runs only in CI, after the move to GitHub |
 | Windows (Win32) | x86, x86_64, ARM64 | x86 and x86_64 built, under Wine; ARM64 built, CI only |
-| DOS | 386 and later | planned, in DOSBox Staging |
+| DOS | 386 and later | built; runs under headless DOSBox Staging; real hardware unverified |
 | Windows 3.1 | 386 enhanced mode | planned, under Wine and in DOSBox-X |
 | Desk | 486, as the module `AFETCH.DMD` | planned: host checks only until Desk has a loader |
 
