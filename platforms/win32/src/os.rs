@@ -4,16 +4,18 @@
 // (c) Copyright 2026 Liminal HQ, Scott Morris
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 
-use core::ffi::CStr;
+use core::ffi::{CStr, c_void};
 use core::mem::MaybeUninit;
 use core::ptr::null_mut;
 
-use afterfetch_core::format::{c_str, format_display, format_kernel, format_os, format_shell};
+use afterfetch_core::format::{c_str, format_cpu, format_display, format_os, format_shell};
 use afterfetch_core::{Buf, Depth, FactKey, Facts, Platform, TerminalInfo, default_logo, run};
 use afterfetch_win32::cmdline::CommandLine;
+use afterfetch_win32::kernel::{PLATFORM_NT, format_kernel};
 
+use crate::processor;
 use crate::sys::*;
-use crate::term::Out;
+use crate::term::{ConsoleMode, Out};
 
 /// The environment variables the core and the facts read. Windows has no environment block to walk without a call that Windows 95 lacks,
 /// so these are asked for once at the start.
@@ -24,6 +26,8 @@ const VALUE_MAX: usize = 260;
 pub struct Windows {
 	/// The console's attributes and width, or None when standard output is not a console.
 	console: Option<(u16, usize)>,
+	/// What the console was before it was asked for escape sequences and UTF-8, when it took them (the 64-bit builds ask).
+	vt: Option<ConsoleMode>,
 	values: [([u8; VALUE_MAX], usize); VARIABLES.len()],
 }
 
@@ -46,7 +50,7 @@ fn standard_output() -> (Handle, Option<(u16, usize)>) {
 }
 
 impl Windows {
-	fn new(console: Option<(u16, usize)>) -> Self {
+	fn new(console: Option<(u16, usize)>, vt: Option<ConsoleMode>) -> Self {
 		let mut values = [([0u8; VALUE_MAX], 0usize); VARIABLES.len()];
 		for (variable, (value, length)) in VARIABLES.iter().zip(values.iter_mut()) {
 			// SAFETY: the name ends in a NUL and the length passed is the buffer's.
@@ -55,7 +59,7 @@ impl Windows {
 			// Zero is unset or empty; a length past the buffer means the value did not fit.
 			*length = if found < VALUE_MAX { found } else { 0 };
 		}
-		Windows { console, values }
+		Windows { console, vt, values }
 	}
 
 	fn var(&self, name: &[u8]) -> Option<&[u8]> {
@@ -73,7 +77,7 @@ impl Windows {
 		facts.host.make_ascii_lowercase();
 	}
 
-	fn fill_system(&self, facts: &mut Facts) {
+	fn fill_system(&self, facts: &mut Facts) -> u32 {
 		let mut version = MaybeUninit::<OsVersionInfoA>::zeroed();
 		// SAFETY: zeroed is a valid OsVersionInfoA; the size field is set before the call.
 		let version = unsafe {
@@ -89,6 +93,7 @@ impl Windows {
 			};
 			format_kernel(
 				facts.row_mut(FactKey::Kernel),
+				version.platform,
 				version.major,
 				version.minor,
 				build,
@@ -103,10 +108,11 @@ impl Windows {
 		let build_lab = registry_string(key, c"BuildLab", &mut lab);
 		let mut system = MaybeUninit::<SystemInfo>::zeroed();
 		// SAFETY: the call fills the structure it is given.
-		let architecture = unsafe {
+		let system = unsafe {
 			GetSystemInfo(system.as_mut_ptr());
-			system.assume_init().processor_architecture
+			system.assume_init()
 		};
+		let architecture = system.processor_architecture;
 		// The system's architecture name as the code below has always mapped it from `GetSystemInfo` (AF-D44): no new table.
 		let name: &[u8] = match architecture {
 			ARCHITECTURE_X86 => b"x86",
@@ -122,23 +128,29 @@ impl Windows {
 		if !row.as_bytes().ends_with(b"-x86") && !name.is_empty() {
 			row.push(b" (").push(name).push(b")");
 		}
+		system.number_of_processors
+	}
+
+	/// The CPU row: the CPUID brand string, else the registry's `ProcessorNameString` (all there is on ARM), else the vendor and family
+	/// of a Pentium. The count is the number of processors `GetSystemInfo` reports.
+	fn fill_cpu(&self, facts: &mut Facts, processors: u32) {
+		let mut name = Buf::<64>::new();
+		processor::brand(&mut name);
+		if name.is_empty() {
+			let mut text = [0u8; 64];
+			let key = c"HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0";
+			name.push(registry_string(key, c"ProcessorNameString", &mut text));
+		}
+		if name.is_empty() {
+			processor::vendor_family(&mut name);
+		}
+		format_cpu(facts.row_mut(FactKey::Cpu), name.as_bytes(), processors);
 	}
 
 	fn fill_resources(&self, facts: &mut Facts) {
-		// SAFETY: a call with no arguments. The count is 32-bit milliseconds, so it wraps after 49 days and the seconds wrap with it.
-		let milliseconds = unsafe { GetTickCount() };
-		facts.set_uptime(u64::from(milliseconds / 1000));
-
-		let mut memory = MaybeUninit::<MemoryStatus>::zeroed();
-		// SAFETY: the length field is set before the call; the call fills the rest.
-		let memory = unsafe {
-			(*memory.as_mut_ptr()).length = size_of::<MemoryStatus>() as u32;
-			GlobalMemoryStatus(memory.as_mut_ptr());
-			memory.assume_init()
-		};
-		// `GlobalMemoryStatus` fills 32-bit fields and saturates at 4 GiB, so on a larger machine the byte counts stop at 4 GiB - 1. The
-		// 64-bit builds ask `GlobalMemoryStatusEx` instead (see the README).
-		facts.set_memory(u64::from(memory.avail_phys), u64::from(memory.total_phys));
+		facts.set_uptime(uptime_seconds());
+		let (available, total) = memory_bytes();
+		facts.set_memory(available, total);
 
 		// SAFETY: GetSystemMetrics takes no pointers; the screen DC is released after the colour depth is read.
 		let (width, height, depth) = unsafe {
@@ -156,6 +168,50 @@ impl Windows {
 			format_display(facts.row_mut(FactKey::Display), width as u32, height as u32, depth);
 		}
 	}
+}
+
+/// A function exported by `kernel32.dll`, or null when this Windows does not have it. Asked for by name, so one executable still
+/// starts on Windows 95, which has neither `GlobalMemoryStatusEx` nor `GetTickCount64`.
+fn kernel32_function(name: &CStr) -> *const c_void {
+	// SAFETY: both names end in a NUL; kernel32 is mapped into every process.
+	unsafe { GetProcAddress(GetModuleHandleA(c"kernel32.dll".as_ptr().cast()), name.as_ptr().cast()) }
+}
+
+/// Seconds since boot: `GetTickCount64` where Windows has it, else `GetTickCount`, which wraps after 49 days.
+fn uptime_seconds() -> u64 {
+	let found = kernel32_function(c"GetTickCount64");
+	if found.is_null() {
+		// SAFETY: a call with no arguments.
+		return u64::from(unsafe { GetTickCount() } / 1000);
+	}
+	// SAFETY: `GetTickCount64` takes no arguments and returns a 64-bit count.
+	unsafe { core::mem::transmute::<*const c_void, unsafe extern "system" fn() -> u64>(found)() / 1000 }
+}
+
+/// Free and total physical memory in bytes: `GlobalMemoryStatusEx` where Windows has it, else `GlobalMemoryStatus`, whose 32-bit
+/// fields saturate at 4 GiB.
+fn memory_bytes() -> (u64, u64) {
+	let found = kernel32_function(c"GlobalMemoryStatusEx");
+	if !found.is_null() {
+		let mut status = MaybeUninit::<MemoryStatusEx>::zeroed();
+		// SAFETY: the length field is set before the call, which fills the rest; the pointer is a `GlobalMemoryStatusEx`.
+		unsafe {
+			(*status.as_mut_ptr()).length = size_of::<MemoryStatusEx>() as u32;
+			let call = core::mem::transmute::<*const c_void, unsafe extern "system" fn(*mut MemoryStatusEx) -> i32>(found);
+			if call(status.as_mut_ptr()) != 0 {
+				let status = status.assume_init();
+				return (status.avail_phys, status.total_phys);
+			}
+		}
+	}
+	let mut status = MaybeUninit::<MemoryStatus>::zeroed();
+	// SAFETY: the length field is set before the call; the call fills the rest.
+	let status = unsafe {
+		(*status.as_mut_ptr()).length = size_of::<MemoryStatus>() as u32;
+		GlobalMemoryStatus(status.as_mut_ptr());
+		status.assume_init()
+	};
+	(u64::from(status.avail_phys), u64::from(status.total_phys))
 }
 
 /// Fills `buffer` from a Win32 call that takes a size in and gives the length out, and returns what was written.
@@ -198,7 +254,8 @@ fn registry_string<'a>(key: &CStr, name: &CStr, buffer: &'a mut [u8]) -> &'a [u8
 impl Platform for Windows {
 	fn facts(&mut self, facts: &mut Facts) {
 		self.fill_names(facts);
-		self.fill_system(facts);
+		let processors = self.fill_system(facts);
+		self.fill_cpu(facts, processors);
 		self.fill_resources(facts);
 		format_shell(facts.row_mut(FactKey::Shell), self.var(b"COMSPEC").unwrap_or(b""));
 		// No desktop row: a console program cannot honestly name one (AF-D20).
@@ -208,8 +265,14 @@ impl Platform for Windows {
 		TerminalInfo {
 			is_tty: self.console.is_some(),
 			columns: self.console.map_or(0, |(_, columns)| columns),
-			depth_hint: Depth::Console16,
-			utf8: false,
+			// A console that took escape sequences (64-bit builds on Windows 10 and later) is drawn in true colour, and in half blocks
+			// when it took UTF-8; any other console is drawn in attributes and cells.
+			depth_hint: if self.vt.is_some() {
+				Depth::TrueColour
+			} else {
+				Depth::Console16
+			},
+			utf8: self.vt.is_some_and(|vt| vt.utf8),
 		}
 	}
 
@@ -236,8 +299,13 @@ impl Platform for Windows {
 /// The whole program. The exit code is the core's, which is 74 when `Out::flush` says a write failed.
 pub fn main() -> u8 {
 	let (handle, console) = standard_output();
-	let mut platform = Windows::new(console);
-	let mut out = Out::new(handle, console.map(|(attributes, _)| attributes));
+	let vt = if console.is_some() {
+		ConsoleMode::enable(handle)
+	} else {
+		None
+	};
+	let mut platform = Windows::new(console, vt);
+	let mut out = Out::new(handle, console.map(|(attributes, _)| attributes), vt);
 	// SAFETY: the command line is a NUL-terminated string that lives as long as the process.
 	let line = unsafe { CStr::from_ptr(GetCommandLineA().cast()) };
 	let command_line = CommandLine::parse(line.to_bytes());

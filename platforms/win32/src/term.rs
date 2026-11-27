@@ -1,16 +1,64 @@
 // Output: a buffered handle sink, and the terminal the core draws through. On a console a style becomes a console attribute and every
 // line ends by putting the console's own attribute back. On a pipe or a file there are no attributes and no escape sequences, whatever
-// depth was asked for: the escape-sequence writer costs 1.3 KB, which the 16 KiB budget does not have (the VT path, AF-WP13, decides).
+// depth was asked for. The 64-bit builds first ask a console for virtual terminal processing (Windows 10 and later, AF-D52): when it
+// accepts, the core's `AnsiTerminal` writes escape sequences, in UTF-8 when the console takes that code page too. The Pentium build has
+// no room for the escape-sequence writer (1.3 KB) and keeps to attributes.
 //
 // (c) Copyright 2026 Liminal HQ, Scott Morris
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 
 use core::ptr::{null, null_mut};
 
-use afterfetch_core::{ByteSink, Style, Terminal};
+use afterfetch_core::{AnsiTerminal, ByteSink, Depth, Style, Terminal};
 use afterfetch_win32::attribute;
 
-use crate::sys::{GetStdHandle, Handle, STD_ERROR_HANDLE, SetConsoleTextAttribute, WriteConsoleA, WriteFile};
+use crate::sys::{
+	CODE_PAGE_UTF8, ENABLE_VIRTUAL_TERMINAL_PROCESSING, GetConsoleMode, GetConsoleOutputCP, GetStdHandle, Handle,
+	STD_ERROR_HANDLE, SetConsoleMode, SetConsoleOutputCP, SetConsoleTextAttribute, WriteConsoleA, WriteFile,
+};
+
+/// True for the builds that may write escape sequences to a console: everything but the Pentium build.
+const VT_BUILD: bool = cfg!(not(target_arch = "x86"));
+
+/// What a console was before afterfetch asked it for escape sequences, so it can be put back at exit.
+#[derive(Clone, Copy)]
+pub struct ConsoleMode {
+	mode: u32,
+	code_page: u32,
+	/// True when the console also took UTF-8, so the half blocks can be drawn.
+	pub utf8: bool,
+}
+
+impl ConsoleMode {
+	/// Asks the console for virtual terminal processing, and for UTF-8 output. None when this is not a 64-bit build or the console
+	/// refuses (Windows before 10 1511, ReactOS, a pipe), in which case nothing has changed.
+	pub fn enable(handle: Handle) -> Option<ConsoleMode> {
+		let mut mode = 0u32;
+		// SAFETY: the handle is a console's output; the call fills `mode`.
+		unsafe {
+			if !VT_BUILD
+				|| GetConsoleMode(handle, &mut mode) == 0
+				|| SetConsoleMode(handle, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING) == 0
+			{
+				return None;
+			}
+			let code_page = GetConsoleOutputCP();
+			Some(ConsoleMode {
+				mode,
+				code_page,
+				utf8: SetConsoleOutputCP(CODE_PAGE_UTF8) != 0,
+			})
+		}
+	}
+
+	fn restore(&self, handle: Handle) {
+		// SAFETY: the handle is the console's output the mode was read from.
+		unsafe {
+			SetConsoleMode(handle, self.mode);
+			SetConsoleOutputCP(self.code_page);
+		}
+	}
+}
 
 /// Standard output, buffered so a full picture is a few writes and not one per colour change. `console` says whether it is written with
 /// `WriteConsoleA` (a console) or `WriteFile` (a pipe, a file, a device).
@@ -80,13 +128,25 @@ pub struct Out {
 	original: Option<u16>,
 	/// The attribute the console has now.
 	current: u16,
+	/// The console's mode before escape sequences were asked for, when they were accepted.
+	vt: Option<ConsoleMode>,
+	/// The run draws with escape sequences (a console that accepted them, at a depth that has them).
+	escapes: bool,
+	/// The depth the run settled on.
+	depth: Depth,
+	/// Something is drawn on this line that needs a reset (escape mode).
+	styled: bool,
 }
 
 const LINE_END: &[u8] = b"\r\n";
 
 impl Out {
-	pub const fn new(handle: Handle, console_attribute: Option<u16>) -> Self {
+	pub const fn new(handle: Handle, console_attribute: Option<u16>, vt: Option<ConsoleMode>) -> Self {
 		Out {
+			vt,
+			escapes: false,
+			depth: Depth::None,
+			styled: false,
 			sink: HandleSink::new(handle, console_attribute.is_some()),
 			original: console_attribute,
 			current: match console_attribute {
@@ -111,13 +171,30 @@ impl Terminal for Out {
 		self.sink.write_bytes(bytes);
 	}
 
+	fn set_depth(&mut self, depth: Depth) {
+		self.depth = depth;
+		self.escapes =
+			VT_BUILD && self.vt.is_some() && matches!(depth, Depth::Mono | Depth::Ansi16 | Depth::Ansi256 | Depth::TrueColour);
+	}
+
 	fn set_style(&mut self, style: Style) {
-		if let Some(original) = self.original {
+		if VT_BUILD && self.escapes {
+			AnsiTerminal::new(&mut self.sink, self.depth, LINE_END).set_style(style);
+			self.styled = style != Style::PLAIN;
+		} else if let Some(original) = self.original {
 			self.set_attribute(attribute::from_style(original, style));
 		}
 	}
 
 	fn end_line(&mut self) {
+		if VT_BUILD && self.escapes {
+			if self.styled {
+				self.sink.write_bytes(b"\x1b[0m");
+				self.styled = false;
+			}
+			self.sink.write_bytes(LINE_END);
+			return;
+		}
 		if let Some(original) = self.original {
 			self.set_attribute(original);
 		}
@@ -130,6 +207,9 @@ impl Terminal for Out {
 			self.set_attribute(original);
 		}
 		self.sink.flush();
+		if let Some(vt) = self.vt.filter(|_| VT_BUILD) {
+			vt.restore(self.sink.handle);
+		}
 		!self.sink.failed()
 	}
 

@@ -1,5 +1,5 @@
-// The parts of the Win32 shell that need no Windows to run: splitting the command line and turning a style into a console attribute.
-// They live in a library so the host can test them; everything that calls Windows is in the program itself.
+// The parts of the Win32 shell that need no Windows to run: splitting the command line, turning a style into a console attribute, and the
+// text of the Kernel and CPU rows. They live in a library so the host can test them; everything that calls Windows is in the program itself.
 //
 // (c) Copyright 2026 Liminal HQ, Scott Morris
 // SPDX-License-Identifier: Apache-2.0 OR MIT
@@ -8,3 +8,5 @@
 
 pub mod attribute;
 pub mod cmdline;
+pub mod cpu;
+pub mod kernel;

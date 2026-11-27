@@ -1,4 +1,5 @@
-// The Win32 calls afterfetch makes: ANSI entry points only, imported by name (raw-dylib), nothing newer than Windows 95. `imports.allow`
+// The Win32 calls afterfetch makes: ANSI entry points only, imported by name (raw-dylib), nothing newer than Windows 95. Only 32-bit x86 decorates `stdcall` names, so
+// only there is the import name type undecorated. `imports.allow`
 // lists them, and `check-imports.sh` keeps the executable to that list.
 //
 // (c) Copyright 2026 Liminal HQ, Scott Morris
@@ -22,7 +23,8 @@ pub const HKEY_LOCAL_MACHINE: usize = 0x8000_0002;
 pub const KEY_QUERY_VALUE: u32 = 0x0001;
 pub const ERROR_SUCCESS: i32 = 0;
 pub const REG_SZ: u32 = 1;
-pub const PLATFORM_NT: u32 = 2;
+pub const ENABLE_VIRTUAL_TERMINAL_PROCESSING: u32 = 0x0004;
+pub const CODE_PAGE_UTF8: u32 = 65001;
 pub const ARCHITECTURE_X86: u16 = 0;
 pub const ARCHITECTURE_ARM: u16 = 5;
 pub const ARCHITECTURE_X86_64: u16 = 9;
@@ -73,6 +75,20 @@ pub struct MemoryStatus {
 	pub avail_virtual: u32,
 }
 
+/// `MEMORYSTATUSEX`, which `GlobalMemoryStatusEx` fills with 64-bit sizes (Windows 98 and later, found through `GetProcAddress`).
+#[repr(C)]
+pub struct MemoryStatusEx {
+	pub length: u32,
+	pub memory_load: u32,
+	pub total_phys: u64,
+	pub avail_phys: u64,
+	pub total_page_file: u64,
+	pub avail_page_file: u64,
+	pub total_virtual: u64,
+	pub avail_virtual: u64,
+	pub avail_extended_virtual: u64,
+}
+
 #[repr(C)]
 pub struct SystemInfo {
 	pub processor_architecture: u16,
@@ -88,7 +104,11 @@ pub struct SystemInfo {
 	pub processor_revision: u16,
 }
 
-#[link(name = "kernel32", kind = "raw-dylib", import_name_type = "undecorated")]
+#[cfg_attr(
+	target_arch = "x86",
+	link(name = "kernel32", kind = "raw-dylib", import_name_type = "undecorated")
+)]
+#[cfg_attr(not(target_arch = "x86"), link(name = "kernel32", kind = "raw-dylib"))]
 unsafe extern "system" {
 	pub fn ExitProcess(code: u32) -> !;
 	pub fn GetStdHandle(which: u32) -> Handle;
@@ -103,10 +123,20 @@ unsafe extern "system" {
 	pub fn GetSystemInfo(info: *mut SystemInfo);
 	pub fn GetTickCount() -> u32;
 	pub fn GlobalMemoryStatus(status: *mut MemoryStatus);
+	pub fn GetModuleHandleA(name: *const u8) -> Handle;
+	pub fn GetProcAddress(module: Handle, name: *const u8) -> *const c_void;
+	pub fn GetConsoleMode(console: Handle, mode: *mut u32) -> i32;
+	pub fn SetConsoleMode(console: Handle, mode: u32) -> i32;
+	pub fn GetConsoleOutputCP() -> u32;
+	pub fn SetConsoleOutputCP(code_page: u32) -> i32;
 	pub fn GetEnvironmentVariableA(name: *const u8, value: *mut u8, size: u32) -> u32;
 }
 
-#[link(name = "advapi32", kind = "raw-dylib", import_name_type = "undecorated")]
+#[cfg_attr(
+	target_arch = "x86",
+	link(name = "advapi32", kind = "raw-dylib", import_name_type = "undecorated")
+)]
+#[cfg_attr(not(target_arch = "x86"), link(name = "advapi32", kind = "raw-dylib"))]
 unsafe extern "system" {
 	pub fn GetUserNameA(name: *mut u8, size: *mut u32) -> i32;
 	pub fn RegOpenKeyExA(key: usize, sub_key: *const u8, options: u32, access: u32, result: *mut usize) -> i32;
@@ -121,14 +151,22 @@ unsafe extern "system" {
 	pub fn RegCloseKey(key: usize) -> i32;
 }
 
-#[link(name = "user32", kind = "raw-dylib", import_name_type = "undecorated")]
+#[cfg_attr(
+	target_arch = "x86",
+	link(name = "user32", kind = "raw-dylib", import_name_type = "undecorated")
+)]
+#[cfg_attr(not(target_arch = "x86"), link(name = "user32", kind = "raw-dylib"))]
 unsafe extern "system" {
 	pub fn GetSystemMetrics(index: i32) -> i32;
 	pub fn GetDC(window: Handle) -> Handle;
 	pub fn ReleaseDC(window: Handle, dc: Handle) -> i32;
 }
 
-#[link(name = "gdi32", kind = "raw-dylib", import_name_type = "undecorated")]
+#[cfg_attr(
+	target_arch = "x86",
+	link(name = "gdi32", kind = "raw-dylib", import_name_type = "undecorated")
+)]
+#[cfg_attr(not(target_arch = "x86"), link(name = "gdi32", kind = "raw-dylib"))]
 unsafe extern "system" {
 	pub fn GetDeviceCaps(dc: Handle, index: i32) -> i32;
 }

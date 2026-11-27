@@ -69,6 +69,7 @@ def check_plain_text(output, what):
 	output = lines_of(output, what)
 	expect(all(byte < 0x80 for byte in output), f"{what}: a byte of 0x80 or more in plain output")
 	expect(b"\x1b" not in output, f"{what}: an escape sequence in plain output")
+	expect(b"\x00" not in output, f"{what}: a NUL byte in plain output")
 	expect(b"\r" not in output, f"{what}: a stray carriage return")
 	expect(output.endswith(b"\n"), f"{what}: output does not end in a newline")
 	for number, line in enumerate(output.decode("ascii").split("\n")[:-1], 1):
@@ -86,8 +87,8 @@ def check_labels(lines, labels):
 
 
 def without_uptime(output):
-	"""The output's lines but the uptime, which may tick over to the next minute between two runs."""
-	return [line for line in output.split(b"\n") if b"Uptime:" not in line]
+	"""The output's lines but the uptime, which may tick over to the next minute between two runs, and the memory, whose free figure moves."""
+	return [line for line in output.split(b"\n") if b"Uptime:" not in line and b"Memory:" not in line]
 
 
 def check_golden(command, golden_path):
@@ -145,6 +146,14 @@ def check_plain(command, labels_path, golden_path=None):
 		expect(values[key], f"--json {key} is empty")
 	if WINDOWS:
 		expect(values["desktop"] is None, "a Windows console program named a desktop")
+		expect(values["cpu"], "a Windows program printed no CPU row")
+		expect("\x00" not in values["cpu"], "the CPU row carries a NUL")
+		expect(values["target"].startswith("windows-"), f"--json target {values['target']!r} is not a Windows target")
+		# A machine with more than 4 GiB shows it: `GlobalMemoryStatusEx` is asked for, not the saturating `GlobalMemoryStatus`.
+		with open("/proc/meminfo", encoding="ascii") as meminfo:
+			host_kib = int(next(line for line in meminfo if line.startswith("MemTotal:")).split()[1])
+		if host_kib > 6 * 1024 * 1024:
+			expect(values["memory_total_bytes"] > 4294967295, f"memory_total_bytes {values['memory_total_bytes']} is capped at 4 GiB")
 	else:
 		expect(values["display"] is None, "a console program reported a display")
 	expect(values["resources"] is None, "a Windows 3.1 fact on Unix")

@@ -11,7 +11,12 @@
 #![no_main]
 
 mod os;
+mod processor;
 mod rt;
+#[cfg(not(target_arch = "x86"))]
+mod rt_probe;
+#[cfg(target_arch = "x86")]
+mod rt_x86;
 mod sys;
 mod term;
 
