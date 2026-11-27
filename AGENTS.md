@@ -101,9 +101,9 @@ Use `#` comments for shell, YAML, TOML and Dockerfiles, and an XML comment for S
 
 - **Core first.** `afterfetch-core` is `no_std`, allocates nothing, never panics on any input and knows nothing about a platform. A shell is an entry point, its system calls and two small trait implementations (`Platform` and `Terminal`).
 - **No libc, no Lua.** Unix programs are `no_std` and `no_main` over raw syscalls, linking nothing (`libSystem` on macOS only, because it has no stable syscall ABI). Win32 imports ANSI names from an allow-list, with no C runtime. Nothing embeds a scripting language.
-- **Size budgets** are enforced by `make check` through `scripts/check-sizes.sh` reading `sizes.toml` as each target lands, and a build over budget fails the gate: Win32 i586 16 KiB, Win32 x86_64 and ARM64 20 KiB, Linux and FreeBSD 24 KiB, macOS 64 KiB, DOS `AFETCH.EXE` 64 KiB, Windows 3.1 `AFETCHW.EXE` 24 KiB, all logo blobs together 6 KiB.
-- **Missing facts are omitted.** A row a system cannot honestly report is left out, and `--json` gives `null`.
-- **Art pipeline.** Every logo is a vector master in `art/masters/`, rendered down by script into the generated `.afl` blobs and palette tables in `crates/afterfetch-art`. Never hand-edit generated files; `make art-check` diffs them. ASCII forms are hand-authored.
+- **Size budgets** are enforced by `make check` through `scripts/check-sizes.sh` reading `sizes.toml` as each target lands, and a build over budget fails the gate: Win32 i586 16 KiB, Win32 x86_64 and ARM64 20 KiB, Linux and FreeBSD 24 KiB, macOS 64 KiB, DOS `AFETCH.EXE` 64 KiB, Windows 3.1 `AFETCHW.EXE` 24 KiB, Desk `AFETCH.DMD` 16 KiB. The art generator enforces the logo budget: 700 bytes per blob and 6 KiB for all together, with 7 KiB the ceiling if it ever has to grow (AF-D40).
+- **Missing facts are omitted.** A row a system cannot honestly report is left out of the text, and its `--json` key stays with the value `null`; every JSON key is always present.
+- **Art pipeline.** Every logo is a vector master in `art/masters/`, rendered down by script into the generated `.afl` blobs and palette tables in `crates/afterfetch-art`. Never hand-edit generated files; `make art-check` diffs them. ASCII forms are hand-authored. Logos are 36 × 12 cells, and ASCII forms at most 36 × 12 except `win32`'s 40 (AF-D41).
 - **Copied runtimes** (DOS from the installer and Desk, Win16 from `rust-win16`, Win32 from reactos-liminal) carry a `PROVENANCE.md` naming the source commit. No ReactOS code is copied in before the Win32 port work package.
 - **Platform shells are their own workspaces** (Win32, DOS, Windows 3.1), so build-std flags never reach the host workspace. They reach the core by path.
 - **SPEC first.** A change to behaviour, interfaces, settings or defaults updates `SPEC.md` in the same change.
@@ -131,8 +131,11 @@ State exactly what was and was not run when reporting results.
 README.md SPEC.md AGENTS.md CLAUDE.md LICENSE-APACHE LICENSE-MIT
 .editorconfig .markdownlint.jsonc .gitignore rustfmt.toml rust-toolchain.toml deny.toml Makefile Cargo.toml
 crates/        afterfetch-core (portable core) and afterfetch-art (generated logos and palette)
+art/           vector masters, ASCII forms, the palette, the logo manifest and the generator
+platforms/     platform shells: unix (Linux today), win32 in progress
+tests/         smoke label lists
 assets/        hero banner
-docs/          decisions, how work lands and project notes
-scripts/       header check, banner check and its Chromium text-fit harness
+docs/          specification notes: decisions, platforms, art, logo format, how work lands
+scripts/       header check, banner check, smoke tests and reproducibility checks
 .github/       CI workflow, issue and pull request templates, release notes configuration
 ```

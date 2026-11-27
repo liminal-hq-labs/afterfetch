@@ -12,7 +12,7 @@ A tiny system-information command with an Afterglow sun for every system, from D
 
 Afterfetch prints a short, neofetch-style summary of the system it runs on, beside a different Afterglow sun for each kind of system. It is one tiny static program per platform, with no libc and no runtime to install.
 
-> **Status:** experimental, local only, no remote yet. The repository is bootstrapped and nothing runs yet; there are no releases.
+> **Status:** experimental, local only, no remote yet, no releases. The Linux x86_64 and i586 builds run; all eight logos are drawn, and the program draws them once the core's decoder lands. The Win32 port is in progress, and the other platforms are not started.
 
 ## What it's for
 
@@ -25,25 +25,29 @@ Afterfetch prints a short, neofetch-style summary of the system it runs on, besi
 There are no packages yet. From source, with Rust 1.98.0 (`rust-toolchain.toml` pins it):
 
 ```sh
-make check
+make check                                              # the full gate, including the Linux builds
+platforms/unix/build.sh x86_64-unknown-linux-musl       # or i586-unknown-linux-musl
+target/x86_64-unknown-linux-musl/release/afterfetch
 ```
 
 ## Platforms
 
 | Platform | Architectures | Verified locally |
 |---|---|---|
-| Linux | x86_64, x86, ARM64, ARMv7, ARMv6, MIPS, MIPSel | planned |
-| FreeBSD | x86_64, x86, ARM64 | planned |
+| Linux | x86_64, x86 (Pentium), ARM64, ARMv7, ARMv6, MIPS, MIPSel, RISC-V 64, PPC64LE | x86_64 and x86: yes, natively (x86 also under `qemu-i386-static`); the rest planned, under qemu-user |
+| FreeBSD | x86_64, x86, ARM64 | planned, in a QEMU VM; ARM64 build-only |
 | macOS | ARM64, x86_64 | CI only, after the move to GitHub |
-| Windows (Win32) | x86, x86_64, ARM64 | planned; ARM64 CI only |
-| DOS | 386 and later | planned |
-| Windows 3.1 | 386 enhanced mode | planned |
-| Desk | to be decided | pending |
+| Windows (Win32) | x86, x86_64, ARM64 | x86 in progress, under Wine; ARM64 CI only |
+| DOS | 386 and later | planned, in DOSBox Staging |
+| Windows 3.1 | 386 enhanced mode | planned, under Wine and in DOSBox-X |
+| Desk | 486, as the module `AFETCH.DMD` | planned: host checks only until Desk has a loader |
 
 ## Documentation
 
 - [SPEC.md](SPEC.md) — behaviour and interfaces
 - [docs/decisions.md](docs/decisions.md) — decisions and why
+- [docs/platforms.md](docs/platforms.md) — how each target is built and tested
+- [docs/art.md](docs/art.md) and [docs/logo-format.md](docs/logo-format.md) — the logos and their blob format
 - [docs/landing.md](docs/landing.md) — how work lands without a remote
 - [AGENTS.md](AGENTS.md) — contributor and agent rules
 

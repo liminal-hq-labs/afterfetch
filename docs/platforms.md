@@ -1,6 +1,8 @@
 # Platforms
 
-How each target is built, where its facts come from, how it is tested on the development machine, and what stays unverified. [SPEC.md](../SPEC.md) §13 says what each target is held to; this page says how. Nothing here is built yet.
+How each target is built, where its facts come from, how it is tested on the development machine, and what stays unverified. [SPEC.md](../SPEC.md) §13 says what each target is held to; this page says how.
+
+**Status.** Linux x86_64 and i586 are built and pass their checks on this machine: structure, size, the native smoke (plain, JSON and a pseudo-terminal colour run) and two-directory reproducibility; i586 also runs under `qemu-i386-static`. The Win32 i586 port is in progress. Every other target below is not started, and nothing has run on real hardware.
 
 ## Targets
 
@@ -9,7 +11,7 @@ Tier is Rust's support tier. Tier 3 and the custom targets have no prebuilt `cor
 | Target name | Rust target | Tier | `core` | Link | Local test | Unverified |
 |---|---|---|---|---|---|---|
 | `linux-x86_64` | `x86_64-unknown-linux-musl` | 2 | prebuilt | `rust-lld`, static, no libc (see [Unix](#linux-and-freebsd)) | Native | — |
-| `linux-i586` | `i586-unknown-linux-musl` | 2 | prebuilt | as above | Native | — |
+| `linux-i586` | `i586-unknown-linux-musl` | 2 | prebuilt | as above | Native, and `qemu-i386-static` where the kernel cannot run 32-bit programs | — |
 | `linux-aarch64` | `aarch64-unknown-linux-musl` | 2 | prebuilt | as above | `qemu-aarch64-static` | Real kernel and hardware |
 | `linux-armv7` | `armv7-unknown-linux-musleabihf` | 2 | prebuilt | as above | `qemu-arm-static` | Real kernel and hardware |
 | `linux-armv6` | `arm-unknown-linux-musleabihf` | 2 | prebuilt | as above | `qemu-arm-static` | Real kernel and hardware; ARMv5 soft-float boards are not a target |
@@ -45,11 +47,11 @@ Source `platforms/win32`, its own Cargo workspace, from the reactos-liminal afte
 
 Source `platforms/unix`, the crate `afterfetch-unix` in the root workspace, with `arch/*.rs` per architecture and `os/{linux,freebsd}.rs`.
 
-- **Link:** `rust-lld` as `ld.lld`, `relocation-model=static`, `-static`, `--gc-sections`, `--build-id=none`, `-znorelro`, `--entry=_start`. No libc, no crt objects. `_start` reads `argc`, `argv` and `envp` from the initial stack; each arch has its own `syscall0..6` stub. MIPS and FreeBSD ARM64 add build-std with `compiler-builtins-mem`.
-- **Linux facts:** `/etc/os-release`, `/proc/meminfo`, `/proc/cpuinfo`, `/etc/passwd`, `/sys/devices/virtual/dmi/id/product_name`, `/proc/device-tree/model`, `uname`, `sysinfo`, `TIOCGWINSZ`, environment. The parsers live in the core and are tested against captured files from real systems (x86_64, a Raspberry Pi 4, a Pi Zero, an OpenWrt MIPS router), because `/proc/cpuinfo` under qemu-user shows the host's processor.
+- **Link:** `rust-lld` as `ld.lld`, `relocation-model=static`, `-static`, `--gc-sections`, `--build-id=none`, `-znorelro`, `--entry=_start`. No libc, no crt objects. `_start` is a `global_asm!` stub per arch that hands the initial stack (`argc`, `argv`, `envp`) to `rt.rs`, and each arch has one `syscall3` stub, since the program uses at most three system call arguments (AF-D38). MIPS and FreeBSD ARM64 add build-std with `compiler-builtins-mem`.
+- **Linux facts:** `/etc/os-release`, `/proc/meminfo`, `/proc/cpuinfo`, `/proc/uptime`, `/etc/passwd`, `/sys/devices/virtual/dmi/id/product_name`, `/proc/device-tree/model`, `uname`, `sysinfo`, `TIOCGWINSZ`, environment (including `XDG_CURRENT_DESKTOP` for the Desktop row, AF-D35); the fallbacks are AF-D39. The parsers live in the core and are tested against captured files from real systems (x86_64, a Raspberry Pi 4, a Pi Zero, an OpenWrt MIPS router), because `/proc/cpuinfo` under qemu-user shows the host's processor.
 - **FreeBSD facts:** `__sysctl` (names resolved through the name-to-OID MIB), `clock_gettime`, `kenv` for the SMBIOS product (omitted when restricted), `TIOCGETA`, `TIOCGWINSZ`. Errors come back in the carry flag. LLVM sets the FreeBSD `EI_OSABI` for a `*-freebsd` triple; a structure check asserts it, and a `.note.tag` ABI note is added if the kernel wants one.
 - **Structure checks:** `llvm-readelf`: static, no `PT_INTERP`, no `DT_NEEDED`, the right machine and OSABI.
-- **Local test, Linux:** x86_64 and i586 natively (plain, JSON, and a colour run inside `script -qc` for a pseudo-terminal). The others through qemu-user-static 11.1.3: binfmt rules for each emulator are registered on this machine, but `scripts/smoke/qemu-user.sh` maps each triple to `/usr/bin/qemu-<arch>-static` and calls it by name, so the smoke does not depend on them. Static no-libc binaries need no sysroot, so qemu-user is the whole test bed.
+- **Local test, Linux:** x86_64 and i586 natively (plain, JSON, and a colour run inside `script -qc` for a pseudo-terminal), through `scripts/smoke/linux-native.sh`; i586 falls back to `qemu-i386-static` when the kernel cannot run it. Both pass today. The others through qemu-user-static 11.1.3: binfmt rules for each emulator are registered on this machine, but `scripts/smoke/qemu-user.sh` maps each triple to `/usr/bin/qemu-<arch>-static` and calls it by name, so the smoke does not depend on them. Static no-libc binaries need no sysroot, so qemu-user is the whole test bed.
 - **Local test, FreeBSD:** `scripts/freebsd-vm.sh fetch` downloads the official `FreeBSD-<release>-amd64-BASIC-CLOUDINIT-ufs.qcow2.xz` once into `~/.cache/afterfetch/freebsd/` (about 0.6 GB; pinned by name and SHA-256, checked against the release `CHECKSUM.SHA256`; `df -h /home` first; one image only). Not fetched yet. `qemu-system-x86_64 -m 1024 -smp 2` boots it with a snapshot overlay so the base never changes; the binary goes in on a small FAT image made with mtools and runs over the serial console under `scripts/smoke/freebsd-serial.py`, always inside `flock ~/.cache/reactos-liminal/qemu.lock`. The i686 build runs in the same guest.
 - **Unverified locally:** real ARM and MIPS kernels and hardware (qemu-user uses the host kernel); FreeBSD ARM64, since there is no `qemu-system-aarch64`. Later options: OpenWrt `malta` under `qemu-system-mipsel`, and `vmactions/freebsd-vm` in CI for x86_64.
 
@@ -98,7 +100,7 @@ Source `platforms/desk`, its own workspace. Desk's `module/guest`, `module/forma
 | Tool | Where | Used by |
 |---|---|---|
 | Rust 1.98.0, `cargo-nextest`, `rust-lld` | rustup | everything |
-| qemu-user-static 11.1.3 | `/usr/bin/qemu-*-static`, binfmt rules registered | Linux ARM, MIPS, RISC-V, PowerPC |
+| qemu-user-static 11.1.3 | `/usr/bin/qemu-*-static`, binfmt rules registered | Linux i586 (`qemu-i386-static`), ARM, MIPS, RISC-V, PowerPC |
 | `qemu-system-x86_64`, `qemu-system-i386` | system | FreeBSD VM, FreeDOS, Desk native track |
 | FreeBSD amd64 cloud image | `~/.cache/afterfetch/freebsd/` (to be fetched) | FreeBSD |
 | Wine 11.21 (WoW64) | system | Win32 i586 and x86_64, Windows 3.1 smoke |

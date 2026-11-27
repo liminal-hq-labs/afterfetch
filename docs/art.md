@@ -39,12 +39,12 @@ Some things never change, so the family holds together however different the hor
 
 A logo is pixel art on a fixed grid, so the generator can turn a master into cells with no judgement of its own.
 
-- **36 × 24 logo pixels** at most: 36 columns and 12 rows of terminal cells, each cell an upper and a lower pixel (a half block). A logo, a gap of two and 34 columns of facts then fit 80 columns.
+- **36 × 24 logo pixels** at most: 36 columns and 12 rows of terminal cells, each cell an upper and a lower pixel (a half block). The facts start at the information column, the logo's widest form plus a gap of two (38), and the logo is drawn beside them from 72 columns (information column + 34), so it fits 80 (SPEC §5, AF-D41).
 - **Masters are 360 × 240 units**, 10 units to the pixel, drawn inside one `scale(10)` group so every coordinate in the file is a whole pixel. Shapes are rectilinear paths on pixel edges (a disc is its stepped outline, sampled at pixel centres); `shape-rendering="crispEdges"` keeps the renderer from blending at the edges, so `rsvg-convert --width 36 --height 24` gives exactly one tone per pixel.
 - **Fills are tone colours only**, written as the tone's `rgb` from the palette. No strokes, gradients, opacity, filters, text or embedded images. Anything else is transparent.
 - **Think in cells.** A horizontal line one pixel high on an even row is the upper half of a cell (`▀`) and on an odd row the lower half (`▄`). Thin features (the horizon, ripples, rays) sit on purpose on one half; the sun's bands may change colour mid-cell, which the half-block form shows as two colours in one cell.
 - **Centre.** A logo with a one-pixel feature on its axis (a ray) uses odd widths centred on pixel column 17; one without may use even widths centred on the line between columns 17 and 18.
-- **Hand-authored ASCII.** Every logo also has an ASCII form, `art/ascii/<logo>.txt`, at most 36 × 12, drawn by hand: automatic ASCII from 36 pixels looks poor. The file alternates an art line and a tone line of the same length; a tone line names each character's tone by its letter, and a space in the art is a space in the tones. `#` is the sun's body and is drawn as a filled cell on consoles.
+- **Hand-authored ASCII.** Every logo also has an ASCII form, `art/ascii/<logo>.txt`, at most 36 × 12 (`win32`'s is 40 × 12, the single exception), drawn by hand: automatic ASCII from 36 pixels looks poor. The file alternates an art line and a tone line of the same length; a tone line names each character's tone by its letter, and a space in the art is a space in the tones. `#` is the sun's body and is drawn as a filled cell on consoles.
 
 ## A day around the family
 
@@ -85,8 +85,8 @@ Every colour a logo may use is a **tone** in `art/palette/afterglow-dusk.toml`: 
 
 - **Console** is the attribute index on Win32 consoles, DOS and Windows 3.1 at 16 colours. The eight tones of the reactos-liminal afterfetch keep its indexes exactly (gold 14, orange 6, coral 12, rose 4, lilac 13, violet 5, periwinkle 1, slate 8), so on the ReactOS image every one is its Afterglow colour with ΔE 0, and the generator's test holds them there.
 - **ANSI** is the same colour in SGR order, which swaps red and blue: it is always the console index with bits 0 and 2 exchanged. On a terminal using the Afterglow terminal palette those slots are Afterglow's own colours (bright red is coral exactly, red is rose exactly).
-- **256** is the xterm cube or grey ramp, never 0 to 15, which belong to the user's theme. Every tone takes its nearest entry, with one exception, below.
-- **Night** has no honest 16-colour match: the nearest console colour is the background. It falls back to slate by role. **Umber** is almost equally far from orange, gold and slate on the Dusk console (ΔE 48.4, 47.2, 49.1) and nearest grey on the Afterglow terminal, so it takes slate (console 8) by role: the Desk halo and Horizon then dim outward, orange to grey to nothing, instead of doubling the orange ring. **Soot** has no 16-colour entry at all and is dropped (drawn transparent) at 16 colours and in mono. **Umber** and **soot** are used only by `desk` and stay provisional until the owner reviews it.
+- **256** is the xterm cube or grey ramp, never 0 to 15, which belong to the user's theme. Every tone takes its nearest entry, with one exception, below (AF-D42).
+- **Night** has no honest 16-colour match: the nearest console colour is the background. It falls back to slate by role. **Umber** is almost equally far from orange, gold and slate on the Dusk console (ΔE 48.4, 47.2, 49.1) and nearest grey on the Afterglow terminal, so it takes slate (console 8) by role: the Desk halo and Horizon then dim outward, orange to grey to nothing, instead of doubling the orange ring. **Soot** has no 16-colour entry at all and is dropped (drawn transparent) at 16 colours and in mono. **Umber** and **soot** are used only by `desk` and stay provisional until the owner reviews it (AF-D42).
 - **Mono** is bold, plain or faint on Unix and the intensity bit on DOS and MDA: the crown and body are bright, so a green-screen still shows a sun.
 
 **Exception: amber at 256 colours.** Amber's xterm entry is 221 (`#ffd75f`, ΔE 18.7), not its nearest, 215 (`#ffaf5f`), because 215 is orange's own entry and the two sun bands would merge into one. Five distinct bands at 256 colours matter more than the closest match, so amber deliberately breaks the nearest-colour rule; it is the only tone that does, and the palette file says so in its role.
@@ -140,7 +140,7 @@ The mark itself, for any system without a logo of its own: the brand sun half se
 
 ### `win32`
 
-The reactos-liminal sunset, the picture the ReactOS image already shows, redrawn as a master at twice its vertical resolution: each text row is two pixel rows. Lilac sparks and three gold rays above; a disc of radius 9.5 on the horizon at row 14, gold for five rows, orange for two and coral for two; short rose bars either side of its foot; the rose horizon across 35 pixels; then four rows of ripples on even rows, so each is a thin upper half-cell, fading from lilac and violet through periwinkle to slate. The picture is centred on column 17, where the text sits a few columns right of its own sun; nothing else moved. Its ASCII form is the reactos-liminal text byte for byte, 40 columns wide, the one exception to the 36-column limit, so the ReactOS console shows exactly what it does today.
+The reactos-liminal sunset, the picture the ReactOS image already shows, redrawn as a master at twice its vertical resolution: each text row is two pixel rows. Lilac sparks and three gold rays above; a disc of radius 9.5 on the horizon at row 14, gold for five rows, orange for two and coral for two; short rose bars either side of its foot; the rose horizon across 35 pixels; then four rows of ripples on even rows, so each is a thin upper half-cell, fading from lilac and violet through periwinkle to slate. The picture is centred on column 17, where the text sits a few columns right of its own sun; nothing else moved. Its ASCII form is the reactos-liminal text byte for byte, 40 columns wide, the one exception to the 36-column limit, so the ReactOS console shows exactly what it does today. The wider form moves `win32`'s information column to 42 in every form, and the logo is drawn beside the facts from 76 columns.
 
 ```text
                  .   .   .
@@ -261,12 +261,12 @@ After dark. The sun on Desk's Void wearing Desk's stepped halo, over Desk's step
 
 `python3 art/scripts/review_sheet.py` renders every drawn master into `~/Documents/Liminal HQ/Afterfetch/renders/`: `<logo>-<depth>.png` at 10 pixels per logo pixel for truecolour, 256, the Dusk console, the Afterglow terminal, stock VGA and mono, each on the background that kind of terminal has; `afterfetch-logos.png`, a sheet of every logo at every depth beside its ASCII form; and `afterfetch-family.png`, the eight side by side in the order of the day at truecolour, Dusk 16, stock VGA and mono, with their ASCII forms. It runs the checks below that a script can make, prints each logo's estimated `.afl` size and fails on any breach or a blob over budget. The cell-accurate previews and the blobs come from the generator, `art/scripts/afterfetch_art.py`.
 
-The blobs, as `make art` writes them ([logo-format.md](logo-format.md#size-budget)): `afterglow` 178, `dos` 157, `win16` 360, `win32` 328, `linux` 198, `freebsd` 179, `macos` 232 and `desk` 331 bytes, 1,963 in all against the 6,144-byte budget.
+The blobs, as `make art` writes them ([logo-format.md](logo-format.md#size-budget)): `afterglow` 178, `dos` 157, `win16` 360, `win32` 328, `linux` 198, `freebsd` 179, `macos` 232 and `desk` 331 bytes, 1,963 in all against the 6,144-byte (6 KiB) budget (AF-D40).
 
 Before a master lands, check that:
 
 - every fill is a tone in the logo's `tones` list in `art/logos.toml`, and every coordinate is a whole pixel;
 - `rsvg-convert --width 36 --height 24` gives only those tones and transparent (no blended edge pixels);
 - the sun is recognisable at 16 colours and in mono, and the horizon line is visible on navy and on black;
-- the ASCII form is at most 36 × 12, ASCII only, with a tone on every drawn character and none on a space;
+- the ASCII form is at most 36 × 12 (`win32` 40 × 12), ASCII only, with a tone on every drawn character and none on a space;
 - nothing in it resembles a system's trademark.
