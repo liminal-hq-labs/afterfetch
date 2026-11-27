@@ -84,7 +84,7 @@ CARGO_ENCODED_RUSTFLAGS="${CARGO_ENCODED_RUSTFLAGS%$'\x1f'}"
 
 cd "$root"
 case "$action" in
-build) cargo build --release --locked "${cargo_extra[@]}" -p afterfetch-unix --target "$target" ;;
-clippy) cargo clippy --release --locked "${cargo_extra[@]}" -p afterfetch-unix --target "$target" -- -D warnings ;;
+build) cargo build --release --locked ${cargo_extra[@]+"${cargo_extra[@]}"} -p afterfetch-unix --target "$target" ;;
+clippy) cargo clippy --release --locked ${cargo_extra[@]+"${cargo_extra[@]}"} -p afterfetch-unix --target "$target" -- -D warnings ;;
 *) echo "unknown action: $action" >&2; exit 2 ;;
 esac
