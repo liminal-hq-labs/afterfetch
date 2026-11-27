@@ -116,11 +116,21 @@ pub trait Terminal {
 		self.write(bytes);
 		self.end_line();
 	}
+	/// Sends whatever is still buffered and says whether every write since the start worked. `run` calls it last, and a `false` makes the
+	/// run end with `EXIT_OUTPUT` (AF-D33). The default is for a terminal that cannot fail.
+	fn flush(&mut self) -> bool {
+		true
+	}
 }
 
 /// A place bytes can be written: a file descriptor, a handle, a buffer.
 pub trait ByteSink {
 	fn write_bytes(&mut self, bytes: &[u8]);
+	/// Sends what is buffered and says whether every write since the start worked, a closed pipe being the usual failure. A sink that is
+	/// unbuffered and cannot fail keeps the default.
+	fn finish(&mut self) -> bool {
+		true
+	}
 }
 
 /// A `Terminal` that writes ANSI escape sequences for `depth` (`Ansi16`, `Ansi256`, `TrueColour` and `Mono`; `None` and `Console16` write
@@ -223,6 +233,10 @@ impl<S: ByteSink> Terminal for AnsiTerminal<'_, S> {
 		}
 		self.sink.write_bytes(self.line_end);
 	}
+
+	fn flush(&mut self) -> bool {
+		self.sink.finish()
+	}
 }
 
 #[cfg(test)]
@@ -321,6 +335,49 @@ mod tests {
 	fn none_and_console16_write_no_escapes() {
 		assert_eq!(paint_one(Depth::None, Style::text(Tone::Gold)), "x\n");
 		assert_eq!(paint_one(Depth::Console16, Style::text(Tone::Gold)), "x\n");
+	}
+
+	/// A sink that takes `room` bytes and then fails, as a pipe does once its reader has gone.
+	struct Failing {
+		room: usize,
+		taken: usize,
+		failed: bool,
+	}
+
+	impl ByteSink for Failing {
+		fn write_bytes(&mut self, bytes: &[u8]) {
+			if self.taken + bytes.len() > self.room {
+				self.failed = true;
+			} else {
+				self.taken += bytes.len();
+			}
+		}
+		fn finish(&mut self) -> bool {
+			!self.failed
+		}
+	}
+
+	#[test]
+	fn an_ansi_terminal_reports_the_failure_of_its_sink() {
+		let mut sink = Failing {
+			room: 3,
+			taken: 0,
+			failed: false,
+		};
+		let mut terminal = AnsiTerminal::new(&mut sink, Depth::None, b"\n");
+		terminal.write(b"abc");
+		assert!(terminal.flush(), "a write that fits works");
+		terminal.write(b"d");
+		terminal.end_line();
+		assert!(!terminal.flush());
+	}
+
+	#[test]
+	fn a_sink_that_cannot_fail_flushes_clean() {
+		let mut collect = Collect::default();
+		let mut terminal = AnsiTerminal::new(&mut collect, Depth::None, b"\n");
+		terminal.write(b"x");
+		assert!(terminal.flush());
 	}
 
 	#[test]

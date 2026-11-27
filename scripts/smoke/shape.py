@@ -13,9 +13,12 @@ import re
 import subprocess
 import sys
 
+# Schema 1 (SPEC section 6): `schema` first, the rows, then the build's identity and the raw numbers.
 JSON_KEYS = [
-	"user", "hostname", "os", "kernel", "model", "uptime", "cpu", "memory", "display", "desktop", "terminal", "shell", "resources",
+	"schema", "user", "hostname", "os", "kernel", "model", "uptime", "cpu", "memory", "display", "desktop", "terminal", "shell",
+	"resources", "target", "arch", "uptime_seconds", "memory_available_bytes", "memory_total_bytes",
 ]
+JSON_NUMBERS = ["uptime_seconds", "memory_available_bytes", "memory_total_bytes"]
 JSON_REQUIRED = ["os", "kernel"]
 MAX_COLUMNS = 80
 
@@ -126,8 +129,18 @@ def check_plain(command, labels_path, golden_path=None):
 	decoded = json.loads(data.stdout, object_pairs_hook=lambda pairs: pairs)
 	expect([key for key, _ in decoded] == JSON_KEYS, f"--json keys {[key for key, _ in decoded]}")
 	values = dict(decoded)
+	expect(values["schema"] == 1, f"--json schema is {values['schema']!r}")
 	for key, value in values.items():
+		if key == "schema" or key in JSON_NUMBERS:
+			continue
 		expect(value is None or isinstance(value, str), f"--json {key} is {value!r}")
+	for key in JSON_NUMBERS:
+		value = values[key]
+		expect(value is None or (isinstance(value, int) and not isinstance(value, bool) and value >= 0), f"--json {key} is {value!r}")
+	expect(values["uptime_seconds"] is not None, "--json has no uptime_seconds")
+	expect(values["memory_total_bytes"] and values["memory_available_bytes"] <= values["memory_total_bytes"], "--json memory numbers")
+	expect(values["arch"], "--json has no arch")
+	expect(values["target"] and re.fullmatch(r"[a-z0-9]+-[a-z0-9_]+", values["target"]), f"--json target {values['target']!r}")
 	for key in JSON_REQUIRED:
 		expect(values[key], f"--json {key} is empty")
 	if WINDOWS:
@@ -138,6 +151,7 @@ def check_plain(command, labels_path, golden_path=None):
 
 	version = run(command + ["--version"])
 	expect(version.returncode == 0 and version.stdout.startswith(b"afterfetch "), "--version")
+	expect(version.stdout.decode("ascii").rstrip().endswith(f"({values['target']})"), f"--version {version.stdout!r} does not name the JSON target")
 	expect(run(command + ["--help"]).returncode == 0, "--help")
 	bad = run(command + ["--no-such-option"])
 	expect(bad.returncode == 2 and bad.stdout == b"" and bad.stderr, "a bad option gives exit 2 and a message on stderr")
@@ -156,6 +170,10 @@ def check_plain(command, labels_path, golden_path=None):
 		expect(json.loads(desktop.stdout)["desktop"] == "Sunset", "XDG_CURRENT_DESKTOP is not reported")
 		quiet = run(command + ["--json"], {"XDG_CURRENT_DESKTOP": ""})
 		expect(json.loads(quiet.stdout)["desktop"] is None, "an empty XDG_CURRENT_DESKTOP gave a row")
+
+		with open("/dev/full", "wb") as full:
+			failed = subprocess.run(command + ["--plain"], stdout=full, stderr=subprocess.DEVNULL, check=False)
+		expect(failed.returncode == 74, f"output to a full device exited {failed.returncode}, not 74")
 
 		forced = run(command + ["--colour", "truecolour"], {"NO_COLOR": "1"})
 		expect(b"\x1b[0m" in forced.stdout and b"38;2;" in forced.stdout, "--colour truecolour did not draw colour on a pipe")

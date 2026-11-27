@@ -26,17 +26,12 @@ impl FdSink {
 		}
 	}
 
-	/// Writes out what is buffered.
-	pub fn flush(&mut self) {
+	/// Writes out what is buffered. A failure is remembered and reported by `finish`.
+	fn flush(&mut self) {
 		if self.length > 0 && !linux::write_all(self.fd, &self.buffer[..self.length]) {
 			self.failed = true;
 		}
 		self.length = 0;
-	}
-
-	/// True when a write failed, such as to a closed pipe.
-	pub fn failed(&self) -> bool {
-		self.failed
 	}
 }
 
@@ -49,6 +44,11 @@ impl ByteSink for FdSink {
 			self.buffer[self.length..self.length + chunk.len()].copy_from_slice(chunk);
 			self.length += chunk.len();
 		}
+	}
+
+	fn finish(&mut self) -> bool {
+		self.flush();
+		!self.failed
 	}
 }
 
@@ -81,6 +81,10 @@ impl Terminal for Out<'_> {
 
 	fn set_depth(&mut self, depth: Depth) {
 		self.ansi.set_depth(depth);
+	}
+
+	fn flush(&mut self) -> bool {
+		self.ansi.flush()
 	}
 
 	fn write_error_line(&mut self, bytes: &[u8]) {

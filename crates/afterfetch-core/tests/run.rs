@@ -6,7 +6,7 @@
 mod common;
 
 use afterfetch_core::Depth;
-use common::{Fake, run_with};
+use common::{Fake, run_failing, run_with};
 
 #[test]
 fn json_has_the_stable_keys_and_no_logo() {
@@ -14,9 +14,11 @@ fn json_has_the_stable_keys_and_no_logo() {
 	assert_eq!(code, 0);
 	assert_eq!(
 		recorder.text,
-		"{\"user\":\"administrator\",\"hostname\":\"reactos\",\"os\":\"ReactOS 0.4.16-x86\",\"kernel\":\"NT 5.2.3790 SP3\",\
-		 \"model\":null,\"uptime\":\"0d 0h 1m\",\"cpu\":null,\"memory\":\"387 MB free of 511 MB\",\
-		 \"display\":\"1024 x 768, 32-bit\",\"desktop\":null,\"terminal\":null,\"shell\":\"cmd.exe\",\"resources\":null}\n"
+		"{\"schema\":1,\"user\":\"administrator\",\"hostname\":\"reactos\",\"os\":\"ReactOS 0.4.16-x86\",\
+		 \"kernel\":\"NT 5.2.3790 SP3\",\"model\":null,\"uptime\":\"0d 0h 1m\",\"cpu\":null,\
+		 \"memory\":\"387 MB free of 511 MB\",\"display\":\"1024 x 768, 32-bit\",\"desktop\":null,\"terminal\":null,\
+		 \"shell\":\"cmd.exe\",\"resources\":null,\"target\":\"windows-i586\",\"arch\":\"x86\",\"uptime_seconds\":60,\
+		 \"memory_available_bytes\":405798912,\"memory_total_bytes\":535822336}\n"
 	);
 	assert_eq!(recorder.styles, 0);
 }
@@ -26,8 +28,9 @@ fn json_of_a_platform_with_no_facts_is_all_null() {
 	let mut platform = Fake::reactos();
 	platform.full = false;
 	let (_, recorder) = run_with(&mut platform, &["--json"]);
-	assert!(recorder.text.starts_with("{\"user\":null,\"hostname\":null,"));
-	assert_eq!(recorder.text.matches("null").count(), 13);
+	assert!(recorder.text.starts_with("{\"schema\":1,\"user\":null,\"hostname\":null,"));
+	assert_eq!(recorder.text.matches("null").count(), 17);
+	assert!(recorder.text.contains("\"target\":\"windows-i586\",\"arch\":null,"));
 }
 
 #[test]
@@ -55,6 +58,100 @@ fn help_and_version_exit_cleanly() {
 		recorder.text
 	);
 	assert!(recorder.text.ends_with(")\n"));
+}
+
+#[test]
+fn the_version_line_names_the_target_the_shell_gives() {
+	let mut platform = Fake::reactos();
+	platform.target = "linux-i586";
+	let (_, recorder) = run_with(&mut platform, &["--version"]);
+	assert_eq!(
+		recorder.text,
+		format!("afterfetch {} (linux-i586)\n", env!("CARGO_PKG_VERSION"))
+	);
+}
+
+#[test]
+fn json_names_the_same_target_as_the_version_line() {
+	for target in ["linux-x86_64", "linux-i586", "windows-i586", "linux-ppc64le"] {
+		let mut platform = Fake::reactos();
+		platform.target = target;
+		let (_, recorder) = run_with(&mut platform, &["--json"]);
+		assert!(recorder.text.contains(&format!("\"target\":\"{target}\",")), "{target}");
+	}
+}
+
+#[test]
+fn a_shell_that_names_no_target_gets_the_builds_own() {
+	struct Unnamed(Fake);
+	impl afterfetch_core::Platform for Unnamed {
+		fn facts(&mut self, facts: &mut afterfetch_core::Facts) {
+			self.0.facts(facts);
+		}
+		fn terminal(&mut self) -> afterfetch_core::TerminalInfo {
+			self.0.terminal()
+		}
+		fn env(&self, name: &[u8]) -> Option<&[u8]> {
+			self.0.env(name)
+		}
+		fn default_logo(&self) -> &'static str {
+			self.0.default_logo()
+		}
+	}
+	let mut platform = Unnamed(Fake::reactos());
+	let mut recorder = common::Recorder::default();
+	afterfetch_core::run(&mut platform, &mut recorder, [b"-V".as_slice()].into_iter());
+	assert!(recorder.text.contains(&format!(
+		"({}-{})",
+		afterfetch_core::run::build_os(),
+		afterfetch_core::run::build_arch()
+	)));
+}
+
+#[test]
+fn a_failed_write_ends_the_run_with_74() {
+	for arguments in [
+		&["--plain"][..],
+		&["--json"],
+		&["--help"],
+		&["--version"],
+		&["--logo", "list"],
+		&[],
+	] {
+		let (code, _) = run_failing(&mut Fake::reactos(), arguments, true);
+		assert_eq!(code, 74, "{arguments:?}");
+		let (code, _) = run_failing(&mut Fake::reactos(), arguments, false);
+		assert_eq!(code, 0, "{arguments:?}");
+	}
+}
+
+#[test]
+fn a_usage_error_keeps_its_own_code_when_the_write_also_failed() {
+	let (code, _) = run_failing(&mut Fake::reactos(), &["--wat"], true);
+	assert_eq!(code, 2);
+}
+
+#[test]
+fn the_output_exit_helper_changes_only_a_success() {
+	use afterfetch_core::run::{EXIT_CRASH, EXIT_OK, EXIT_OUTPUT, EXIT_USAGE, output_exit};
+	assert_eq!(EXIT_OUTPUT, 74);
+	assert_eq!(output_exit(EXIT_OK, true), EXIT_OK);
+	assert_eq!(output_exit(EXIT_OK, false), EXIT_OUTPUT);
+	assert_eq!(output_exit(EXIT_USAGE, false), EXIT_USAGE);
+	assert_eq!(output_exit(EXIT_CRASH, false), EXIT_CRASH);
+}
+
+#[test]
+fn a_platform_without_raw_numbers_gives_null_numbers() {
+	let mut platform = Fake::reactos();
+	platform.raw = false;
+	let (_, recorder) = run_with(&mut platform, &["--json"]);
+	assert!(recorder.text.contains("\"uptime\":\"0d 0h 1m\""));
+	assert!(
+		recorder
+			.text
+			.ends_with("\"arch\":null,\"uptime_seconds\":null,\"memory_available_bytes\":null,\"memory_total_bytes\":null}\n")
+	);
 }
 
 #[test]
@@ -122,6 +219,6 @@ fn arbitrary_arguments_never_panic() {
 	];
 	for sample in samples {
 		let (code, _) = run_with(&mut Fake::reactos(), sample);
-		assert!(code == 0 || code == 2, "{sample:?}");
+		assert!(code == 0 || code == 2 || code == 74, "{sample:?}");
 	}
 }

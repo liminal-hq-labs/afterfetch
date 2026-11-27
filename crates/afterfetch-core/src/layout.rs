@@ -7,7 +7,7 @@
 use crate::depth::Depth;
 use crate::facts::{FactKey, Facts};
 use crate::logo::{Blocks, Logo};
-use crate::palette::Tone;
+use crate::palette::{Tone, arch_accent};
 use crate::sink::{Paint, Style, Terminal};
 
 /// The room between the logo and the facts, and the least room the facts need beside it.
@@ -124,9 +124,10 @@ fn pad(out: &mut impl Terminal, count: usize) {
 	}
 }
 
-fn dashes(out: &mut impl Terminal, depth: Depth, count: usize) {
+/// The title's rule: `count` dashes in the architecture's accent tone.
+fn dashes(out: &mut impl Terminal, depth: Depth, count: usize, accent: Tone) {
 	const DASHES: &[u8] = b"--------------------------------------------------------------------------------";
-	out.set_style(Style::at(depth, Tone::Slate));
+	out.set_style(Style::at(depth, accent));
 	out.write(&DASHES[..count.min(DASHES.len())]);
 }
 
@@ -162,7 +163,7 @@ fn info_line(out: &mut impl Terminal, facts: &Facts, line: Line, depth: Depth, l
 		Line::Rule => {
 			let (user, host) = (facts.user.len(), facts.host.len());
 			let at = usize::from(user > 0 && host > 0);
-			dashes(out, depth, user + at + host);
+			dashes(out, depth, user + at + host, arch_accent(facts.arch.as_bytes()));
 		}
 		Line::Fact(key) => {
 			out.set_style(Style::at(depth, key.tone()));
@@ -451,5 +452,71 @@ mod tests {
 		// A console shell turns `Style::fill(Tone)` into this attribute over its default of 0x07.
 		assert_eq!(fill_attribute(0x07, Tone::Gold), 0xe7);
 		assert_eq!(text_attribute(0x07, Tone::Gold), 0x0e);
+	}
+
+	/// The tone the title's rule is drawn in: the style set just before the run of dashes.
+	fn rule_tone(depth: Depth, arch: &[u8]) -> Style {
+		#[derive(Default)]
+		struct Rule {
+			style: Option<Style>,
+			found: Option<Style>,
+		}
+		impl Terminal for Rule {
+			fn write(&mut self, bytes: &[u8]) {
+				if !bytes.is_empty() && bytes.iter().all(|&byte| byte == b'-') {
+					self.found = self.style;
+				}
+			}
+			fn set_style(&mut self, style: Style) {
+				self.style = Some(style);
+			}
+			fn end_line(&mut self) {}
+		}
+		let mut facts = sample();
+		facts.arch.push(arch);
+		let mut rule = Rule::default();
+		render(
+			&mut rule,
+			&facts,
+			Layout {
+				logo: None,
+				depth,
+				blocks: Blocks::None,
+				columns: 80,
+			},
+		);
+		rule.found.expect("the rule is drawn")
+	}
+
+	#[test]
+	fn the_rule_takes_the_accent_of_the_architecture() {
+		for (arch, tone) in [
+			(&b"x86_64"[..], Tone::Gold),
+			(b"i686", Tone::Gold),
+			(b"aarch64", Tone::Periwinkle),
+			(b"armv7l", Tone::Periwinkle),
+			(b"mips", Tone::Violet),
+			(b"riscv64", Tone::Teal),
+			(b"ppc64le", Tone::Coral),
+			(b"sparc64", Tone::Slate),
+			(b"", Tone::Slate),
+		] {
+			assert_eq!(rule_tone(Depth::TrueColour, arch), Style::text(tone), "{arch:?}");
+		}
+	}
+
+	#[test]
+	fn the_accent_is_a_weight_in_mono_and_nothing_without_colour() {
+		assert_eq!(rule_tone(Depth::Mono, b"riscv64"), Style::mono(Tone::Teal));
+		assert_eq!(rule_tone(Depth::None, b"riscv64"), Style::PLAIN);
+	}
+
+	#[test]
+	fn the_accent_leaves_the_plain_text_alone() {
+		let mut facts = sample();
+		let (plain, _) = run(false, 80, &facts);
+		facts.arch.push(b"riscv64");
+		let (with_arch, _) = run(false, 80, &facts);
+		assert_eq!(plain, with_arch);
 	}
 }

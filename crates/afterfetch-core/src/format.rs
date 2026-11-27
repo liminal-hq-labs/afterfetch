@@ -67,6 +67,36 @@ impl<const N: usize> Buf<N> {
 		self
 	}
 
+	/// Appends `value` in decimal. A value under 2^32 takes the 32-bit path; a larger one is turned into digits by shifts and adds alone
+	/// (the "double dabble" method), because a 64-bit division on a Pentium is a call into a helper the size budget does not have.
+	pub fn push_u64(&mut self, value: u64) -> &mut Self {
+		if let Ok(small) = u32::try_from(value) {
+			return self.push_u32(small);
+		}
+		// One decimal digit per byte, most significant first; 20 digits hold any u64.
+		let mut digits = [0u8; 20];
+		let mut bit = 64;
+		while bit > 0 {
+			bit -= 1;
+			for digit in &mut digits {
+				if *digit >= 5 {
+					*digit += 3;
+				}
+			}
+			let mut carry = ((value >> bit) & 1) as u8;
+			for digit in digits.iter_mut().rev() {
+				let shifted = (*digit << 1) | carry;
+				carry = shifted >> 4;
+				*digit = shifted & 0x0F;
+			}
+		}
+		let first = digits.iter().position(|&digit| digit != 0).unwrap_or(digits.len() - 1);
+		for digit in &digits[first..] {
+			self.push(&[b'0' + digit]);
+		}
+		self
+	}
+
 	/// Lower-cases ASCII letters in place.
 	pub fn make_ascii_lowercase(&mut self) {
 		self.bytes[..self.len].make_ascii_lowercase();
@@ -241,6 +271,24 @@ mod tests {
 			.push(b",")
 			.push_u32(u32::MAX);
 		assert_eq!(text(&out), "0,7,40960,4294967295");
+	}
+
+	#[test]
+	fn large_decimal_numbers_need_no_division() {
+		for value in [
+			0u64,
+			9,
+			u64::from(u32::MAX),
+			u64::from(u32::MAX) + 1,
+			12_345_678_901_234,
+			1 << 40,
+			10_000_000_000_000_000_000,
+			u64::MAX,
+		] {
+			let mut out = Buf::<24>::new();
+			out.push_u64(value);
+			assert_eq!(text(&out), value.to_string());
+		}
 	}
 
 	#[test]

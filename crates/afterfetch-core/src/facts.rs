@@ -103,6 +103,14 @@ pub struct Facts {
 	pub user: Buf<32>,
 	/// The machine's network name.
 	pub host: Buf<32>,
+	/// The architecture name as the system reports it (`x86_64`, `i686`, `aarch64`, `armv7l`), never mapped to a list (AF-D44). It is
+	/// `arch` in JSON and decides the title rule's accent. Empty when the system does not say.
+	pub arch: Buf<24>,
+	/// Whole seconds since boot, for `uptime_seconds` in JSON.
+	pub uptime_seconds: Option<u64>,
+	/// The two figures of the Memory row in bytes, for `memory_available_bytes` and `memory_total_bytes` in JSON.
+	pub memory_available_bytes: Option<u64>,
+	pub memory_total_bytes: Option<u64>,
 	rows: [Buf<64>; ROW_COUNT],
 }
 
@@ -111,6 +119,10 @@ impl Facts {
 		Facts {
 			user: Buf::new(),
 			host: Buf::new(),
+			arch: Buf::new(),
+			uptime_seconds: None,
+			memory_available_bytes: None,
+			memory_total_bytes: None,
 			rows: [Buf::new(); ROW_COUNT],
 		}
 	}
@@ -128,6 +140,19 @@ impl Facts {
 	/// True when a row has a value to show.
 	pub fn has(&self, key: FactKey) -> bool {
 		!self.rows[key.slot()].is_empty()
+	}
+
+	/// Sets the memory row and its raw numbers together, so the text and the JSON figures cannot disagree.
+	pub fn set_memory(&mut self, available_bytes: u64, total_bytes: u64) {
+		crate::format::format_memory(&mut self.rows[FactKey::Memory.slot()], available_bytes, total_bytes);
+		self.memory_available_bytes = Some(available_bytes);
+		self.memory_total_bytes = Some(total_bytes);
+	}
+
+	/// Sets the uptime row and its raw number together.
+	pub fn set_uptime(&mut self, seconds: u64) {
+		crate::format::format_uptime(&mut self.rows[FactKey::Uptime.slot()], seconds);
+		self.uptime_seconds = Some(seconds);
 	}
 
 	/// True when there is a user or a host name for the title.
@@ -157,6 +182,21 @@ mod tests {
 		assert_eq!(facts.row(FactKey::Kernel), b"6.1");
 		assert_eq!(facts.row(FactKey::Shell), b"zsh");
 		assert!(!facts.has(FactKey::Os));
+	}
+
+	#[test]
+	fn the_raw_numbers_start_absent_and_follow_the_rows() {
+		let mut facts = Facts::new();
+		assert!(facts.arch.is_empty());
+		assert_eq!(facts.uptime_seconds, None);
+		assert_eq!((facts.memory_available_bytes, facts.memory_total_bytes), (None, None));
+		facts.set_uptime(93_784);
+		facts.set_memory(400 << 20, 512 << 20);
+		assert_eq!(facts.row(FactKey::Uptime), b"1d 2h 3m");
+		assert_eq!(facts.row(FactKey::Memory), b"400 MB free of 512 MB");
+		assert_eq!(facts.uptime_seconds, Some(93_784));
+		assert_eq!(facts.memory_available_bytes, Some(400 << 20));
+		assert_eq!(facts.memory_total_bytes, Some(512 << 20));
 	}
 
 	#[test]

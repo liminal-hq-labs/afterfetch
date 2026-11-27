@@ -13,6 +13,10 @@ pub struct Fake {
 	pub environment: Vec<(&'static str, &'static str)>,
 	pub logo: &'static str,
 	pub full: bool,
+	/// The target name the platform gives; empty keeps the trait's default.
+	pub target: &'static str,
+	/// The raw numbers and architecture the facts carry (reactos: 387 MB free of 511 MB, up 60 s, `x86`).
+	pub raw: bool,
 }
 
 impl Fake {
@@ -28,6 +32,8 @@ impl Fake {
 			environment: Vec::new(),
 			logo: "win32",
 			full: true,
+			target: "windows-i586",
+			raw: true,
 		}
 	}
 }
@@ -41,8 +47,14 @@ impl Platform for Fake {
 		facts.host.push(b"reactos");
 		facts.row_mut(FactKey::Os).push(b"ReactOS 0.4.16-x86");
 		facts.row_mut(FactKey::Kernel).push(b"NT 5.2.3790 SP3");
-		facts.row_mut(FactKey::Uptime).push(b"0d 0h 1m");
-		facts.row_mut(FactKey::Memory).push(b"387 MB free of 511 MB");
+		if self.raw {
+			facts.arch.push(b"x86");
+			facts.set_uptime(60);
+			facts.set_memory(387 << 20, 511 << 20);
+		} else {
+			facts.row_mut(FactKey::Uptime).push(b"0d 0h 1m");
+			facts.row_mut(FactKey::Memory).push(b"387 MB free of 511 MB");
+		}
 		facts.row_mut(FactKey::Display).push(b"1024 x 768, 32-bit");
 		facts.row_mut(FactKey::Shell).push(b"cmd.exe");
 	}
@@ -61,6 +73,10 @@ impl Platform for Fake {
 	fn default_logo(&self) -> &'static str {
 		self.logo
 	}
+
+	fn target_name(&self, out: &mut afterfetch_core::Buf<32>) {
+		out.push(self.target.as_bytes());
+	}
 }
 
 /// Records the text, with a style marker where the style changes. `{a:..}` is the console attribute over a default of 0x07.
@@ -69,6 +85,8 @@ pub struct Recorder {
 	pub text: String,
 	pub styles: usize,
 	pub errors: String,
+	/// When set, `flush` reports a failed write, as a closed pipe would.
+	pub fail: bool,
 }
 
 impl Terminal for Recorder {
@@ -81,6 +99,9 @@ impl Terminal for Recorder {
 	fn end_line(&mut self) {
 		self.text.push('\n');
 	}
+	fn flush(&mut self) -> bool {
+		!self.fail
+	}
 	fn write_error_line(&mut self, bytes: &[u8]) {
 		self.errors.push_str(&String::from_utf8_lossy(bytes));
 		self.errors.push('\n');
@@ -88,7 +109,15 @@ impl Terminal for Recorder {
 }
 
 pub fn run_with(platform: &mut Fake, arguments: &[&str]) -> (u8, Recorder) {
-	let mut recorder = Recorder::default();
+	run_failing(platform, arguments, false)
+}
+
+/// Like `run_with`, with a terminal whose writes fail when `fail` is true.
+pub fn run_failing(platform: &mut Fake, arguments: &[&str], fail: bool) -> (u8, Recorder) {
+	let mut recorder = Recorder {
+		fail,
+		..Recorder::default()
+	};
 	let code = afterfetch_core::run(platform, &mut recorder, arguments.iter().map(|argument| argument.as_bytes()));
 	(code, recorder)
 }

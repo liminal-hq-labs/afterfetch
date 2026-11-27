@@ -59,6 +59,32 @@ pub enum Tone {
 	Soot,
 }
 
+/// The accent tone of an architecture, for the title's rule (SPEC section 5, AF-D17, AF-D36): gold for x86, periwinkle for ARM, violet for
+/// MIPS, teal for RISC-V, coral for PowerPC and slate for anything else or an empty name. `arch` is the system's own name (`i686`,
+/// `armv7l`, `ppc64le`), which is read as it stands and never shown differently; only the family is looked up, in the art crate's table.
+pub fn arch_accent(arch: &[u8]) -> Tone {
+	let starts = |prefix: &[u8]| arch.len() >= prefix.len() && arch[..prefix.len()].eq_ignore_ascii_case(prefix);
+	let intel_32_bit = arch.len() == 4 && starts(b"i") && arch[1].is_ascii_digit() && &arch[2..] == b"86";
+	let family = if starts(b"x86_64") || starts(b"amd64") {
+		"x86_64"
+	} else if starts(b"x86") || intel_32_bit {
+		"x86"
+	} else if starts(b"aarch64") || starts(b"arm64") {
+		"aarch64"
+	} else if starts(b"arm") {
+		"arm"
+	} else if starts(b"mips") {
+		"mips"
+	} else if starts(b"riscv") {
+		"riscv64"
+	} else if starts(b"ppc") || starts(b"powerpc") {
+		"powerpc64"
+	} else {
+		"other"
+	};
+	afterfetch_art::arch_accent(family).map_or(Tone::Slate, |entry| Tone::from_id(entry.id))
+}
+
 /// How strongly a tone is drawn when colour is not available.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Weight {
@@ -291,5 +317,47 @@ mod tests {
 		assert_eq!(Tone::Gold.mono_weight(), Weight::Bold);
 		assert_eq!(Tone::Slate.mono_weight(), Weight::Dim);
 		assert_eq!(Tone::Plain.mono_weight(), Weight::Normal);
+	}
+
+	#[test]
+	fn each_architecture_family_has_its_accent() {
+		for (name, tone) in [
+			("x86_64", Tone::Gold),
+			("amd64", Tone::Gold),
+			("i386", Tone::Gold),
+			("i586", Tone::Gold),
+			("i686", Tone::Gold),
+			("x86", Tone::Gold),
+			("aarch64", Tone::Periwinkle),
+			("arm64", Tone::Periwinkle),
+			("armv7l", Tone::Periwinkle),
+			("armv6l", Tone::Periwinkle),
+			("arm", Tone::Periwinkle),
+			("mips", Tone::Violet),
+			("mipsel", Tone::Violet),
+			("mips64", Tone::Violet),
+			("riscv64", Tone::Teal),
+			("riscv32", Tone::Teal),
+			("ppc64le", Tone::Coral),
+			("ppc", Tone::Coral),
+			("powerpc64", Tone::Coral),
+		] {
+			assert_eq!(arch_accent(name.as_bytes()), tone, "{name}");
+		}
+	}
+
+	#[test]
+	fn an_unknown_or_empty_architecture_gets_the_other_accent() {
+		for name in ["", "sparc64", "s390x", "i6", "ix86", "loongarch64"] {
+			assert_eq!(arch_accent(name.as_bytes()), Tone::Slate, "{name}");
+		}
+	}
+
+	#[test]
+	fn the_accent_ignores_case_and_agrees_with_the_art_table() {
+		assert_eq!(arch_accent(b"X86_64"), Tone::Gold);
+		for (name, id) in afterfetch_art::ARCH_ACCENTS {
+			assert_eq!(arch_accent(name.as_bytes()), Tone::from_id(id), "{name}");
+		}
 	}
 }

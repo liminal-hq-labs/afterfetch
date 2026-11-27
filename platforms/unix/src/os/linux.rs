@@ -4,13 +4,13 @@
 // (c) Copyright 2026 Liminal HQ, Scott Morris
 // SPDX-License-Identifier: Apache-2.0 OR MIT
 
-use afterfetch_core::format::{c_str, format_memory, format_terminal, format_uptime};
+use afterfetch_core::format::{c_str, format_terminal};
 use afterfetch_core::parse::cpuinfo::CpuInfo;
 use afterfetch_core::parse::lines::LineFeed;
 use afterfetch_core::parse::meminfo::MemInfo;
 use afterfetch_core::parse::os_release::OsRelease;
 use afterfetch_core::parse::{basename, model, passwd, uptime};
-use afterfetch_core::{FactKey, Facts, Platform, TerminalInfo, default_logo, depth, run};
+use afterfetch_core::{Buf, FactKey, Facts, Platform, TerminalInfo, default_logo, depth, run};
 
 use crate::arch::{self, nr};
 use crate::rt::{Args, c_bytes};
@@ -290,7 +290,7 @@ impl Linux {
 		let count = read_small(b"/proc/uptime\0", &mut contents);
 		let seconds = uptime::seconds(&contents[..count]).or_else(|| sysinfo().map(|info| info.uptime.max(0) as u64));
 		if let Some(seconds) = seconds {
-			format_uptime(facts.row_mut(FactKey::Uptime), seconds);
+			facts.set_uptime(seconds);
 		}
 	}
 
@@ -312,7 +312,7 @@ impl Linux {
 			available = (system.free_ram as u64 + system.buffer_ram as u64) * unit;
 		}
 		if total > 0 {
-			format_memory(facts.row_mut(FactKey::Memory), available, total);
+			facts.set_memory(available, total);
 		}
 	}
 
@@ -342,6 +342,8 @@ impl Platform for Linux {
 				.push(b" ")
 				.push(c_str(&names.release));
 		}
+		// The kernel's own name for the machine, as it gives it (AF-D44): `x86_64`, `i686`, `aarch64`, `armv7l`.
+		facts.arch.push(machine);
 		self.fill_os(facts, machine);
 		self.fill_model(facts);
 		self.fill_uptime(facts);
@@ -373,16 +375,38 @@ impl Platform for Linux {
 	fn default_logo(&self) -> &'static str {
 		default_logo("linux")
 	}
+
+	fn target_name(&self, out: &mut Buf<32>) {
+		out.push(b"linux-").push(TARGET_ARCH.as_bytes());
+	}
 }
 
-/// The whole program: the exit code is the core's, or 74 when the output could not be written.
+/// The architecture part of the target name (SPEC section 2) for the processor this build runs on. The Rust names do not say which
+/// Arm, Mips or PowerPC target a build is, so the endianness and the Arm version decide.
+const TARGET_ARCH: &str = if cfg!(target_arch = "x86_64") {
+	"x86_64"
+} else if cfg!(target_arch = "x86") {
+	"i586"
+} else if cfg!(target_arch = "aarch64") {
+	"aarch64"
+} else if cfg!(target_arch = "arm") {
+	if cfg!(target_feature = "v7") { "armv7" } else { "armv6" }
+} else if cfg!(target_arch = "mips") {
+	if cfg!(target_endian = "little") { "mipsel" } else { "mips" }
+} else if cfg!(target_arch = "mips64") {
+	"mips64el"
+} else if cfg!(target_arch = "riscv64") {
+	"riscv64"
+} else if cfg!(target_arch = "powerpc64") {
+	"ppc64le"
+} else {
+	"unknown"
+};
+
+/// The whole program. The core's exit code already says when the output could not be written (74): `run` asks the terminal at the end.
 pub fn main(args: Args, environment: *const *const u8) -> u8 {
 	let mut platform = Linux::new(environment);
 	let mut sink = FdSink::new(1);
-	let code = {
-		let mut out = Out::new(&mut sink);
-		run(&mut platform, &mut out, args)
-	};
-	sink.flush();
-	if code == 0 && sink.failed() { 74 } else { code }
+	let mut out = Out::new(&mut sink);
+	run(&mut platform, &mut out, args)
 }

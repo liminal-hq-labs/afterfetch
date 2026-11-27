@@ -8,7 +8,7 @@ use core::ffi::CStr;
 use core::mem::MaybeUninit;
 use core::ptr::null_mut;
 
-use afterfetch_core::format::{c_str, format_display, format_kernel, format_memory, format_os, format_shell, format_uptime_ms};
+use afterfetch_core::format::{c_str, format_display, format_kernel, format_os, format_shell};
 use afterfetch_core::{Buf, Depth, FactKey, Facts, Platform, TerminalInfo, default_logo, run};
 use afterfetch_win32::cmdline::CommandLine;
 
@@ -107,26 +107,27 @@ impl Windows {
 			GetSystemInfo(system.as_mut_ptr());
 			system.assume_init().processor_architecture
 		};
+		// The system's architecture name as the code below has always mapped it from `GetSystemInfo` (AF-D44): no new table.
+		let name: &[u8] = match architecture {
+			ARCHITECTURE_X86 => b"x86",
+			ARCHITECTURE_X86_64 => b"x86_64",
+			ARCHITECTURE_ARM => b"arm",
+			ARCHITECTURE_ARM64 => b"aarch64",
+			_ => b"",
+		};
+		facts.arch.push(name);
 		let row = facts.row_mut(FactKey::Os);
 		format_os(row, product, build_lab, architecture == ARCHITECTURE_X86);
 		// A known ReactOS release carries its architecture already (`0.4.16-x86`); any other system gets it in brackets.
-		if !row.as_bytes().ends_with(b"-x86") {
-			let name: &[u8] = match architecture {
-				ARCHITECTURE_X86 => b"x86",
-				ARCHITECTURE_X86_64 => b"x86_64",
-				ARCHITECTURE_ARM => b"arm",
-				ARCHITECTURE_ARM64 => b"aarch64",
-				_ => b"",
-			};
-			if !name.is_empty() {
-				row.push(b" (").push(name).push(b")");
-			}
+		if !row.as_bytes().ends_with(b"-x86") && !name.is_empty() {
+			row.push(b" (").push(name).push(b")");
 		}
 	}
 
 	fn fill_resources(&self, facts: &mut Facts) {
-		// SAFETY: a call with no arguments.
-		format_uptime_ms(facts.row_mut(FactKey::Uptime), unsafe { GetTickCount() });
+		// SAFETY: a call with no arguments. The count is 32-bit milliseconds, so it wraps after 49 days and the seconds wrap with it.
+		let milliseconds = unsafe { GetTickCount() };
+		facts.set_uptime(u64::from(milliseconds / 1000));
 
 		let mut memory = MaybeUninit::<MemoryStatus>::zeroed();
 		// SAFETY: the length field is set before the call; the call fills the rest.
@@ -135,11 +136,9 @@ impl Windows {
 			GlobalMemoryStatus(memory.as_mut_ptr());
 			memory.assume_init()
 		};
-		format_memory(
-			facts.row_mut(FactKey::Memory),
-			u64::from(memory.avail_phys),
-			u64::from(memory.total_phys),
-		);
+		// `GlobalMemoryStatus` fills 32-bit fields and saturates at 4 GiB, so on a larger machine the byte counts stop at 4 GiB - 1. The
+		// 64-bit builds ask `GlobalMemoryStatusEx` instead (see the README).
+		facts.set_memory(u64::from(memory.avail_phys), u64::from(memory.total_phys));
 
 		// SAFETY: GetSystemMetrics takes no pointers; the screen DC is released after the colour depth is read.
 		let (width, height, depth) = unsafe {
@@ -234,7 +233,7 @@ impl Platform for Windows {
 	}
 }
 
-/// The whole program: the exit code is the core's, or 74 when the output could not be written.
+/// The whole program. The exit code is the core's, which is 74 when `Out::flush` says a write failed.
 pub fn main() -> u8 {
 	let (handle, console) = standard_output();
 	let mut platform = Windows::new(console);
@@ -242,8 +241,5 @@ pub fn main() -> u8 {
 	// SAFETY: the command line is a NUL-terminated string that lives as long as the process.
 	let line = unsafe { CStr::from_ptr(GetCommandLineA().cast()) };
 	let command_line = CommandLine::parse(line.to_bytes());
-	let code = run(&mut platform, &mut out, command_line.args());
-	// Puts the console's attributes back too, which matters when a run was cut short.
-	let written = out.finish();
-	if code == 0 && !written { 74 } else { code }
+	run(&mut platform, &mut out, command_line.args())
 }

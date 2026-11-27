@@ -25,6 +25,17 @@ pub const EXIT_OK: u8 = 0;
 pub const EXIT_USAGE: u8 = 2;
 /// Exit code a shell uses when it crashes.
 pub const EXIT_CRASH: u8 = 70;
+/// Exit code when the output could not be written: a closed pipe, or a `/DUMP` file that cannot be created (the BSD `EX_IOERR`, AF-D33).
+pub const EXIT_OUTPUT: u8 = 74;
+
+/// The exit code for a run that ended with `code` once it is known whether every write worked. A run that would have succeeded exits
+/// with `EXIT_OUTPUT` instead; a failure keeps its own code, since that is the more useful thing to report.
+///
+/// `run` applies this itself to what the terminal says through `Terminal::flush`. A shell calls it for a failure `run` cannot see, such
+/// as a `/DUMP` file it could not create (`output_exit(code, false)`).
+pub const fn output_exit(code: u8, written: bool) -> u8 {
+	if code == EXIT_OK && !written { EXIT_OUTPUT } else { code }
+}
 
 /// What the layout needs to know about the terminal.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -41,14 +52,17 @@ pub struct TerminalInfo {
 
 /// Everything the core needs from the system underneath.
 pub trait Platform {
-	/// Fills in the facts this platform can honestly report and leaves the rest empty.
+	/// Fills in the facts this platform can honestly report and leaves the rest empty, with the raw numbers (`arch`, `uptime_seconds`,
+	/// `memory_available_bytes`, `memory_total_bytes`) that `--json` carries beside the text.
 	fn facts(&mut self, facts: &mut Facts);
 	fn terminal(&mut self) -> TerminalInfo;
 	/// The value of an environment variable.
 	fn env(&self, name: &[u8]) -> Option<&[u8]>;
 	/// The name of the logo drawn for `--logo auto`: `default_logo` of the art crate for this platform's name (`linux`, `win32`, `dos`).
 	fn default_logo(&self) -> &'static str;
-	/// The name `--version` prints in brackets, such as `linux-x86_64`. The default is the build's own operating system and architecture.
+	/// The target name of SPEC section 2 (`linux-x86_64`, `linux-i586`, `windows-i586`): what `--version` prints in brackets and `--json`
+	/// calls `target`. Every shell names its own; the default is only the build's own operating system and Rust architecture, which is
+	/// wrong for a build that has a name of its own (a Pentium build is `i586`, not `x86`).
 	fn target_name(&self, out: &mut Buf<32>) {
 		out.push(build_os().as_bytes()).push(b"-").push(build_arch().as_bytes());
 	}
@@ -115,8 +129,14 @@ fn lines(out: &mut impl Terminal, text: &[&str]) {
 	}
 }
 
-/// Runs the program. `argv` is the arguments after the program's name. Returns the exit code: 0, or 2 for a usage error.
+/// Runs the program. `argv` is the arguments after the program's name. Returns the exit code: 0, 2 for a usage error, or 74 when the
+/// terminal reports at the end that a write failed.
 pub fn run<'a>(platform: &mut impl Platform, out: &mut impl Terminal, argv: impl Iterator<Item = &'a [u8]>) -> u8 {
+	let code = run_once(platform, out, argv);
+	output_exit(code, out.flush())
+}
+
+fn run_once<'a>(platform: &mut impl Platform, out: &mut impl Terminal, argv: impl Iterator<Item = &'a [u8]>) -> u8 {
 	let options = match args::parse(argv) {
 		Ok(options) => options,
 		Err(error) => {
@@ -162,7 +182,9 @@ pub fn run<'a>(platform: &mut impl Platform, out: &mut impl Terminal, argv: impl
 	let mut facts = Facts::new();
 	platform.facts(&mut facts);
 	if options.json {
-		json::write(out, &facts);
+		let mut target = Buf::<32>::new();
+		platform.target_name(&mut target);
+		json::write(out, &facts, target.as_bytes());
 		return EXIT_OK;
 	}
 

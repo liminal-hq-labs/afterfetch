@@ -104,15 +104,6 @@ impl Out {
 			self.current = wanted;
 		}
 	}
-
-	/// Puts the console's own attribute back and writes what is left, then says whether every write worked.
-	pub fn finish(&mut self) -> bool {
-		if let Some(original) = self.original {
-			self.set_attribute(original);
-		}
-		self.sink.flush();
-		!self.sink.failed()
-	}
 }
 
 impl Terminal for Out {
@@ -131,6 +122,15 @@ impl Terminal for Out {
 			self.set_attribute(original);
 		}
 		self.sink.write_bytes(LINE_END);
+	}
+
+	/// Puts the console's own attribute back and writes what is left, then says whether every write worked.
+	fn flush(&mut self) -> bool {
+		if let Some(original) = self.original {
+			self.set_attribute(original);
+		}
+		self.sink.flush();
+		!self.sink.failed()
 	}
 
 	fn write_error_line(&mut self, bytes: &[u8]) {
