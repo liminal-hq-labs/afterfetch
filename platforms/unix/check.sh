@@ -62,7 +62,7 @@ if [ -n "$macho" ]; then
 	if [ "$macho" = ARM64 ]; then
 		grep -q "cmd LC_CODE_SIGNATURE" <<<"$headers" || fail "arm64 macOS needs a code signature, and there is none"
 	fi
-	size="$(stat -c %s "$binary")"
+	size="$(wc -c <"$binary" | tr -d " ")"
 	[ "$size" -le "$budget" ] || fail "$size bytes is over the $budget byte budget"
 	# Every undefined symbol is in the stub, and every function the source declares is really imported.
 	stub="$(sed -n 's/^ *symbols: *\[//p;s/^ *\([_a-z].*\)\]$/\1/p' "$here/macos/libSystem.tbd" | tr -d ' ' | tr ',' '\n' | grep . | sort -u)"
@@ -85,7 +85,7 @@ grep -q "Type:.*EXEC" <<<"$header" || fail "not a fixed-address executable (relo
 dynamic="$(llvm-readelf -d "$binary" 2>&1 || true)"
 ! grep -q 'NEEDED' <<<"$dynamic" || fail "has a DT_NEEDED"
 ! grep -qi 'dynamic section' <<<"$dynamic" || fail "has a dynamic section"
-size="$(stat -c %s "$binary")"
+size="$(wc -c <"$binary" | tr -d " ")"
 [ "$size" -le "$budget" ] || fail "$size bytes is over the $budget byte budget"
 
 source_calls="$(sed -n '/^enum Sys {/,/^}/p' "$here/src/os/$source_file.rs" | grep -oE '^\s+[A-Z][A-Za-z]+,' | tr -d '\t ,' | sort)"
