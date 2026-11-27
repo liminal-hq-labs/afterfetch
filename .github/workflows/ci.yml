@@ -1,6 +1,6 @@
 # Placeholder pipeline: one job per check, so the checks list names exactly what passed or failed.
-# There is no remote yet, so `make check` is the gate until the project moves to GitHub. The full
-# matrix (cross builds, smokes, size and structure checks) lands with the CI work package.
+# `make check` is the full local gate. The full matrix (cross builds, smokes, size and structure
+# checks) lands in its own pull request (docs/handover.md).
 #
 # (c) Copyright 2026 Liminal HQ, Scott Morris
 # SPDX-License-Identifier: Apache-2.0 OR MIT
@@ -55,6 +55,27 @@ jobs:
 
       - name: Check SPDX headers
         run: bash scripts/check-headers.sh
+
+  banner:
+    name: Hero banner
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install SVG tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libxml2-utils librsvg2-bin fonts-dejavu-core fonts-liberation
+
+      # The runner image ships Google Chrome, which the text-fit pass drives headless.
+      - name: Check the banner
+        env:
+          BANNER_REQUIRE_RENDER: '1'
+        run: bash scripts/check-banner.sh
 
   # Rust: one job per check in the shared ci-rust image, pinned by digest. No apt-get on the
   # runner; every tool comes from the image.
