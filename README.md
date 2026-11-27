@@ -36,7 +36,7 @@ target/x86_64-unknown-linux-musl/release/afterfetch
 |---|---|---|
 | Linux | x86_64, x86 (Pentium), ARM64, ARMv7, ARMv6, MIPS, MIPSel, RISC-V 64, PPC64LE | x86_64 and x86: yes, natively (x86 also under `qemu-i386-static`); the rest planned, under qemu-user |
 | FreeBSD | x86_64, ARM64 | x86_64 runs in the official 15.1 image under QEMU; ARM64 built and structure-checked, never run |
-| macOS | ARM64, x86_64 | CI only, after the move to GitHub |
+| macOS | ARM64, x86_64 | built and structure-checked here; runs only in CI, after the move to GitHub |
 | Windows (Win32) | x86, x86_64, ARM64 | x86 and x86_64 built, under Wine; ARM64 built, CI only |
 | DOS | 386 and later | planned, in DOSBox Staging |
 | Windows 3.1 | 386 enhanced mode | planned, under Wine and in DOSBox-X |
