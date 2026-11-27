@@ -277,8 +277,8 @@ What "verified" means for each target. **Local** means the program runs on this 
 |---|---|---|---|---|---|
 | Linux | x86_64, i586 | Local | Native, plain, JSON and a pseudo-terminal colour run; i586 also under `qemu-i386-static` | Slice (Checkpoint A) | Built and passing: structure, size, smoke and reproducibility |
 | Linux | aarch64, armv7, armv6 | Local, emulated | qemu-user, called by name, as a Cortex-A72, Cortex-A7 and ARM1176 | — | Built and passing under qemu-user: structure, size, smoke and reproducibility; real kernels and hardware unverified (AF-D51) |
-| Linux | mips, mipsel (mips64el optional) | Local, emulated | qemu-user | **Go/no-go** (AF-D22): tier-3 target and experimental `asm!` | Not started |
-| Linux | riscv64, ppc64le | Local, emulated | qemu-user | After MIPS goes | Not started |
+| Linux | mips, mipsel (mips64el optional) | Local, emulated | qemu-user, called by name, as a 24Kc | — | Built and passing under qemu-user: structure, smoke and reproducibility; 42.7 KB against a 44 KiB budget for MIPS only; real kernels and hardware unverified (AF-D22) |
+| Linux | riscv64, ppc64le | Local, emulated | qemu-user | After MIPS (went, AF-D22) | Not started |
 | FreeBSD | x86_64, i686 | Local, in a VM | The FreeBSD amd64 cloud image under QEMU | **Go/no-go** (AF-D23): build-only plus structure checks if the VM automation is not reliable | Not started; image not fetched |
 | FreeBSD | aarch64 | Structure | ELF brand, static, size | Run unverified until an aarch64 VM or hardware exists | Not started |
 | macOS | aarch64, x86_64 | Structure locally; CI later | Mach-O load commands and symbols; runs on a GitHub macOS runner after the move to GitHub (AF-D5) | **Go/no-go** on the first CI run | Not started |
