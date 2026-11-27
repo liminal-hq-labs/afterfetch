@@ -59,7 +59,7 @@ arm = "periwinkle"
 aarch64 = "periwinkle"
 mips = "violet"
 riscv64 = "teal"
-powerpc64 = "lilac"
+powerpc64 = "coral"
 other = "slate"
 
 [[tone]]

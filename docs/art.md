@@ -90,7 +90,7 @@ Every colour a logo may use is a **tone** in `art/palette/afterglow-dusk.toml`: 
 - **Night** has no honest 16-colour match: the nearest console colour is the background. It falls back to slate by role. **Soot** has no 16-colour entry at all and is dropped (drawn transparent) at 16 colours and in mono. **Umber** and **soot** are provisional until the `desk` master is drawn.
 - **Mono** is bold, plain or faint on Unix and the intensity bit on DOS and MDA: the crown and body are bright, so a green-screen still shows a sun.
 
-The fact labels walk down the same sunset (gold, orange, coral, rose, lilac, violet, periwinkle), as they do in the ReactOS build, and the title rule takes the architecture's accent (`[arch-accent]` in the palette: x86 gold, ARM periwinkle, MIPS violet, RISC-V teal, POWER lilac).
+The fact labels walk down the same sunset (gold, orange, coral, rose, lilac, violet, periwinkle), as they do in the ReactOS build, and the title rule takes the architecture's accent (`[arch-accent]` in the palette: x86 gold, ARM periwinkle, MIPS violet, RISC-V teal, PowerPC coral).
 
 ## The sun at each depth
 
