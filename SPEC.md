@@ -9,7 +9,7 @@ Nothing is released. Every part may change between commits. A part marked **plan
 - **Core** (`afterfetch-core`: arguments, colour depth, facts, layout, JSON): in progress; the command line, facts, layout, depth and JSON below are implemented and host-tested, including exit code 74, JSON schema 1 and the architecture accent. The logo decoder reads the generated blobs and draws them in every form at every depth, host-tested with goldens for every logo.
 - **Art** (`afterfetch-art`, the eight logos): all eight masters and ASCII forms are drawn and their blobs generated (2,026 bytes together, §7). The core decodes them (AF-D46). `umber` and `soot`, used only by `desk`, are provisional until the owner reviews that logo (AF-D42).
 - **Preview** (`afterfetch-preview`, host only, AF-D50): draws the real core's output for any system from sample facts, as text, ANSI, PNG or HTML, and writes the contact sheet of the eight logos. See [docs/preview.md](docs/preview.md).
-- **Platforms**: Linux x86_64 and i586 build and pass their local checks (§13); the Win32 port is in progress; every other target is not started. The order and the go/no-go checkpoints are in §13.
+- **Platforms**: Linux x86_64, i586, aarch64, armv7 and armv6 build and pass their local checks, the Arm ones under qemu-user (§13); the Win32 port is in progress; every other target is not started. The order and the go/no-go checkpoints are in §13.
 
 ## 1 · Purpose and scope
 
@@ -253,7 +253,7 @@ Every release binary must fit its budget; `scripts/check-sizes.sh` reads `sizes.
 |---|---|
 | Win32 i586 | 24 KiB (AF-D47) |
 | Win32 x86_64, ARM64 | 20 KiB |
-| Linux x86_64 and i586 | 32 KiB (AF-D47) |
+| Linux x86_64, i586, ARM64 and 32-bit Arm | 32 KiB (AF-D47) |
 | FreeBSD (any arch) | 24 KiB |
 | macOS (each arch) | 64 KiB |
 | DOS `AFETCH.EXE` | 64 KiB, CWSDPMI stub included |
@@ -276,7 +276,7 @@ What "verified" means for each target. **Local** means the program runs on this 
 | Platform | Arch | Held to | How | Checkpoint | Status |
 |---|---|---|---|---|---|
 | Linux | x86_64, i586 | Local | Native, plain, JSON and a pseudo-terminal colour run; i586 also under `qemu-i386-static` | Slice (Checkpoint A) | Built and passing: structure, size, smoke and reproducibility |
-| Linux | aarch64, armv7, armv6 | Local, emulated | qemu-user | — | Not started |
+| Linux | aarch64, armv7, armv6 | Local, emulated | qemu-user, called by name, as a Cortex-A72, Cortex-A7 and ARM1176 | — | Built and passing under qemu-user: structure, size, smoke and reproducibility; real kernels and hardware unverified (AF-D51) |
 | Linux | mips, mipsel (mips64el optional) | Local, emulated | qemu-user | **Go/no-go** (AF-D22): tier-3 target and experimental `asm!` | Not started |
 | Linux | riscv64, ppc64le | Local, emulated | qemu-user | After MIPS goes | Not started |
 | FreeBSD | x86_64, i686 | Local, in a VM | The FreeBSD amd64 cloud image under QEMU | **Go/no-go** (AF-D23): build-only plus structure checks if the VM automation is not reliable | Not started; image not fetched |
