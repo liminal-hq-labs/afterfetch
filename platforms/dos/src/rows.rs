@@ -38,12 +38,12 @@ fn push_windows_version<const N: usize>(out: &mut Buf<N>, major: u8, minor: u8) 
 	}
 }
 
-/// `MS-DOS 6.22`, and `MS-DOS 6.22 in Windows 3.11` when the program runs in a DOS box (`windows` is the version INT 2Fh AX=1600h gave).
+/// `MS-DOS 6.22`, and `MS-DOS 6.22 in Win 3.11` when the program runs in a DOS box (`windows` is the version INT 2Fh AX=1600h gave).
 pub fn format_os<const N: usize>(out: &mut Buf<N>, product: &[u8], major: u8, minor: u8, windows: Option<(u8, u8)>) {
 	out.push(product).push(b" ");
 	push_dos_version(out, major, minor);
 	if let Some((windows_major, windows_minor)) = windows {
-		out.push(b" in Windows ");
+		out.push(b" in Win ");
 		push_windows_version(out, windows_major, windows_minor);
 	}
 }
@@ -185,13 +185,13 @@ mod tests {
 	fn a_dos_box_says_which_windows() {
 		let mut out = Buf::<64>::new();
 		format_os(&mut out, b"MS-DOS", 6, 22, Some((3, 10)));
-		assert_eq!(text(&out), "MS-DOS 6.22 in Windows 3.1");
+		assert_eq!(text(&out), "MS-DOS 6.22 in Win 3.1");
 		let mut out = Buf::<64>::new();
 		format_os(&mut out, b"MS-DOS", 7, 10, Some((3, 11)));
-		assert_eq!(text(&out), "MS-DOS 7.10 in Windows 3.11");
+		assert_eq!(text(&out), "MS-DOS 7.10 in Win 3.11");
 		let mut out = Buf::<64>::new();
 		format_os(&mut out, b"MS-DOS", 7, 10, Some((4, 0)));
-		assert_eq!(text(&out), "MS-DOS 7.10 in Windows 4.0");
+		assert_eq!(text(&out), "MS-DOS 7.10 in Win 4.0");
 	}
 
 	#[test]

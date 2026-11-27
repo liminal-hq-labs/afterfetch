@@ -9,12 +9,13 @@ export CARGO_BUILD_JOBS ?= 4
 .PHONY: preview sheet
 .PHONY: fmt-win32 clippy-win32 test-win32 build-win32 check-win32 smoke-wine repro-win32
 .PHONY: fmt-dos clippy-dos test-dos build-dos check-dos smoke-dos repro-dos
+.PHONY: fmt-win16 clippy-win16 test-win16 build-win16 check-win16 smoke-wine16 smoke-w31 repro-win16
 
 UNIX_TARGETS := x86_64-unknown-linux-musl i586-unknown-linux-musl aarch64-unknown-linux-musl armv7-unknown-linux-musleabihf arm-unknown-linux-musleabihf mips-unknown-linux-musl mipsel-unknown-linux-musl riscv64gc-unknown-linux-musl powerpc64le-unknown-linux-musl x86_64-unknown-freebsd aarch64-unknown-freebsd x86_64-apple-darwin aarch64-apple-darwin
 WIN32_ARCHES := i586 x86_64 aarch64
 
 # Every later work package adds its builds, size checks and smokes to `check`.
-check: check-fast deny clippy-unix build-unix check-unix smoke-linux-native smoke-freebsd repro-unix fmt-win32 clippy-win32 test-win32 build-win32 check-win32 smoke-wine repro-win32 fmt-dos clippy-dos test-dos build-dos check-dos smoke-dos repro-dos
+check: check-fast deny clippy-unix build-unix check-unix smoke-linux-native smoke-freebsd repro-unix fmt-win32 clippy-win32 test-win32 build-win32 check-win32 smoke-wine repro-win32 fmt-dos clippy-dos test-dos build-dos check-dos smoke-dos repro-dos fmt-win16 clippy-win16 test-win16 build-win16 check-win16 smoke-wine16 repro-win16
 
 check-fast: headers fmt clippy test test-art art-check
 
@@ -115,6 +116,34 @@ smoke-dos: build-dos
 repro-dos:
 	bash platforms/dos/tools/fetch-tools.sh
 	bash scripts/repro-dos.sh
+
+# Windows 3.1 (AF-D58): its own workspace over the shared crates, with the rust-win16 packer copied in (platforms/win16/PROVENANCE.md). `smoke-wine16`
+# runs AFETCHW.EXE under Wine on a virtual display; `smoke-w31` runs both Windows 3.1 builds on Windows for Workgroups 3.11 in DOSBox-X and is not part
+# of `check` (it needs Docker and a Windows tree, and takes minutes).
+fmt-win16:
+	cd platforms/win16 && cargo fmt --all -- --check
+
+clippy-win16:
+	bash platforms/win16/build.sh clippy
+
+test-win16:
+	cd platforms/win16 && cargo nextest run -p afetchw-rows --locked --no-tests=pass --target $$(rustc -vV | sed -n 's/^host: //p')
+	cd platforms/win16 && python3 -I -m unittest discover -s tests
+
+build-win16:
+	bash platforms/win16/build.sh
+
+check-win16: build-win16
+	bash platforms/win16/check.sh
+
+smoke-wine16: build-win16
+	bash scripts/smoke/wine16.sh
+
+smoke-w31: build-win16 build-dos
+	bash scripts/smoke/w31.sh
+
+repro-win16:
+	bash scripts/repro-win16.sh
 
 # Preview (AF-D50): what afterfetch looks like on any supported system, from sample facts. Host only; never part of a size gate or a
 # release. `make preview SYSTEM=macos COLOUR=256 WIDTH=100` prints one system; `make sheet` writes the contact sheet of the eight logos.

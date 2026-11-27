@@ -1,0 +1,55 @@
+warning: target feature `soft-float` must be enabled to ensure that the ABI of the current target can be implemented correctly
+  |
+  = note: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+  = note: for more information, see issue #116344 <https://github.com/rust-lang/rust/issues/116344>
+
+warning: `afterfetch-art` (lib) generated 1 warning
+warning: `afterfetch-core` (lib) generated 1 warning (1 duplicate)
+warning: `afetchw-rows` (lib) generated 1 warning (1 duplicate)
+warning: formatting may not be suitable for sub-register argument
+   --> src/lib.rs:631:19
+    |
+631 |             "mov word ptr [{p}], cx",
+    |                            ^^^
+632 |             "mov byte ptr [{p} + 2], dh",
+    |                            ^^^
+633 |             "mov byte ptr [{p} + 3], dl",
+    |                            ^^^
+...
+643 |             p = in(reg) out.as_mut_ptr() as u16,
+    |                         ----------------------- for this argument
+    |
+    = help: use `{0:x}` to have the register formatted as `ax` (for 16-bit values)
+    = help: or use `{0:e}` to keep the default formatting of `eax` (for 32-bit values)
+    = note: `#[warn(asm_sub_register)]` on by default
+
+warning: formatting may not be suitable for sub-register argument
+   --> src/lib.rs:665:19
+    |
+665 |             "mov byte ptr [{p}], ch",
+    |                            ^^^
+666 |             "mov byte ptr [{p} + 1], cl",
+    |                            ^^^
+...
+676 |             p = in(reg) out.as_mut_ptr() as u16,
+    |                         ----------------------- for this argument
+    |
+    = help: use `{0:x}` to have the register formatted as `ax` (for 16-bit values)
+    = help: or use `{0:e}` to keep the default formatting of `eax` (for 32-bit values)
+
+warning: direct cast of function item into an integer
+   --> src/fault.rs:155:40
+    |
+155 |         InterruptRegister(task, FaultHandler as usize as u32) != 0
+    |                                              ^^^^^^^^
+    |
+    = note: `#[warn(function_casts_as_integer)]` on by default
+help: first cast to a pointer `as *const ()`
+    |
+155 |         InterruptRegister(task, FaultHandler as *const () as usize as u32) != 0
+    |                                              ++++++++++++
+
+warning: `win16` (lib) generated 4 warnings (1 duplicate) (run `cargo fix --lib -p win16` to apply 1 suggestion)
+   Compiling win16 v0.0.0 (/home/scott/source/worktrees/afterfetch/win16/platforms/win16)
+warning: `win16` (bin "afetchw") generated 1 warning (1 duplicate)
+    Finished `release` profile [optimized] target(s) in 0.27s

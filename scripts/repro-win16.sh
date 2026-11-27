@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Builds the Windows 3.1 program in three different directories and compares the bytes. Usage: repro-win16.sh
+#
+# The three paths differ in depth and length, because a build that depends on the checkout path can hide behind two lucky ones. The copies and
+# their build output live in a folder of their own under ~/.cache/afterfetch (one per run, so two runs never meet) and are removed when the
+# script ends.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+mkdir -p "${HOME}/.cache/afterfetch"
+work="$(mktemp -d "${HOME}/.cache/afterfetch/repro-win16.XXXXXX")"
+trap 'rm -rf "$work"' EXIT
+
+copies=(one/afterfetch two/second-place three/a/much/deeper/directory/with-a-longer-name)
+for copy in "${copies[@]}"; do
+	mkdir -p "$work/$copy"
+	(cd "$root" && git ls-files --cached --others --exclude-standard -z | xargs -0 -I{} cp -P --parents {} "$work/$copy/")
+done
+for copy in "${copies[@]}"; do
+	(cd "$work/$copy" && CARGO_TARGET_DIR="$work/$copy/target" bash platforms/win16/build.sh >/dev/null 2>&1) || {
+		echo "FAIL repro win16: the build in $copy failed" >&2
+		exit 1
+	}
+done
+first="$work/${copies[0]}/platforms/win16/dist/AFETCHW.EXE"
+for copy in "${copies[@]:1}"; do
+	if ! cmp -s "$first" "$work/$copy/platforms/win16/dist/AFETCHW.EXE"; then
+		echo "FAIL repro win16: the build in $copy differs from the build in ${copies[0]}" >&2
+		exit 1
+	fi
+done
+echo "ok repro win16: byte-identical across ${#copies[@]} directories ($(sha256sum <"$first" | cut -d' ' -f1))"

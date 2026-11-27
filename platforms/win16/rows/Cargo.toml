@@ -1,0 +1,20 @@
+# The parts of the Windows 3.1 shell that need no Windows to run: the cell grid the window draws and the text of each row.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+[package]
+name = "afetchw-rows"
+description = "Afterfetch for Windows 3.1: the cell grid and the row text, testable on the host"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0 OR MIT"
+rust-version = "1.98.0"
+repository = "https://github.com/liminal-hq-labs/afterfetch"
+publish = false
+
+[dependencies]
+afterfetch-core = { path = "../crates/afterfetch-core" }
+
+[lints]
+workspace = true

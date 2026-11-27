@@ -1,0 +1,58 @@
+# The Win16 shell for afterfetch: a window program for Windows 3.1 and later, `no_std` Rust for 16-bit code segments, packed into an NE
+# executable. Its own workspace, so the build-std flags and the custom target never reach the host build.
+#
+# (c) Copyright 2026 Liminal HQ, Scott Morris
+# SPDX-License-Identifier: Apache-2.0 OR MIT
+
+[workspace]
+resolver = "3"
+members = [".", "rows"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0 OR MIT"
+rust-version = "1.98.0"
+repository = "https://github.com/liminal-hq-labs/afterfetch"
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+all = { level = "deny", priority = -1 }
+
+[package]
+name = "win16"
+version = "0.0.0"
+edition = "2024"
+license = "Apache-2.0 OR MIT"
+publish = false
+
+[features]
+# The panic box names the source file and line. It costs several kilobytes of code.
+panic-location = []
+# Features the runtime in src/lib.rs tests for; this build leaves them off.
+noalias = []
+bench = []
+
+[lib]
+name = "w16"
+path = "src/lib.rs"
+
+[[bin]]
+name = "afetchw"
+path = "src/bin/afetchw/main.rs"
+test = false
+bench = false
+
+[dependencies]
+afterfetch-core = { path = "crates/afterfetch-core" }
+afetchw-rows = { path = "rows" }
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+debug = 0
+strip = false

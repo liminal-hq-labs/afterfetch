@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 # Checks the shape of afterfetch's output without comparing values, which differ on every machine. Usage:
-#   shape.py plain <binary> <labels file> [--runner <emulator>] [--windows [--golden <file>] | --dos]
+#   shape.py plain <binary> <labels file> [--runner <emulator>] [--windows [--golden <file>] | --dos | --win16]
 #   shape.py colour <capture file> <none|16|256|truecolour>
 # `--windows`: CR LF line ends, no desktop row, no escapes on a pipe at any depth; `--golden` compares the win32 logo's columns.
+# `--win16`: no memory total (Windows 3.1 reports only the free global heap), Windows 3.1's resources row, no title without Windows for
+# Workgroups, and no exit status: a usage error is only a message in the output file.
 # `--dos`: no uptime, no escapes on a pipe at any depth, a display row allowed; the runner has already turned DOS line ends into plain ones.
 # (c) Copyright 2026 Liminal HQ, Scott Morris
 # SPDX-License-Identifier: Apache-2.0 OR MIT
@@ -55,6 +57,7 @@ def read_labels(path):
 
 WINDOWS = False
 DOS = False
+WIN16 = False
 LOGO_COLUMNS = 42
 LOGO_ROWS = 12
 
@@ -113,9 +116,13 @@ def check_plain(command, labels_path, golden_path=None):
 	check_plain_text(facts.stdout, "facts")
 	lines = lines_of(facts.stdout, "facts").decode("ascii").split("\n")[:-1]
 	expect(len(lines) >= 4, "too few lines")
-	expect(re.fullmatch(r"\S+@\S+|\S+", lines[0]) is not None, f"title line {lines[0]!r}")
-	expect(set(lines[1]) == {"-"}, f"rule line {lines[1]!r}")
-	check_labels(lines[2:], labels)
+	if WIN16 and lines[0].startswith("OS:"):
+		# Windows 3.1 without Windows for Workgroups has no user or computer name, so there is no title and no rule.
+		check_labels(lines, labels)
+	else:
+		expect(re.fullmatch(r"\S+@\S+|\S+", lines[0]) is not None, f"title line {lines[0]!r}")
+		expect(set(lines[1]) == {"-"}, f"rule line {lines[1]!r}")
+		check_labels(lines[2:], labels)
 
 	picture = run(command + ["--plain"])
 	expect(picture.returncode == 0, f"--plain exited {picture.returncode}")
@@ -142,7 +149,10 @@ def check_plain(command, labels_path, golden_path=None):
 		expect(value is None or (isinstance(value, int) and not isinstance(value, bool) and value >= 0), f"--json {key} is {value!r}")
 	if not DOS:
 		expect(values["uptime_seconds"] is not None, "--json has no uptime_seconds")
-	expect(values["memory_total_bytes"] and values["memory_available_bytes"] <= values["memory_total_bytes"], "--json memory numbers")
+	if WIN16:
+		expect(values["memory_available_bytes"] and values["memory_total_bytes"] is None, "--json memory numbers")
+	else:
+		expect(values["memory_total_bytes"] and values["memory_available_bytes"] <= values["memory_total_bytes"], "--json memory numbers")
 	expect(values["arch"], "--json has no arch")
 	expect(values["target"] and re.fullmatch(r"[a-z0-9]+-[a-z0-9_]+", values["target"]), f"--json target {values['target']!r}")
 	for key in JSON_REQUIRED:
@@ -157,13 +167,17 @@ def check_plain(command, labels_path, golden_path=None):
 			host_kib = int(next(line for line in meminfo if line.startswith("MemTotal:")).split()[1])
 		if host_kib > 6 * 1024 * 1024:
 			expect(values["memory_total_bytes"] > 4294967295, f"memory_total_bytes {values['memory_total_bytes']} is capped at 4 GiB")
-	elif not DOS:
+	elif not (DOS or WIN16):
 		expect(values["display"] is None, "a console program reported a display")
 	if DOS:
 		expect(values["uptime"] is None and values["terminal"] is None and values["desktop"] is None, "DOS reported a fact it cannot know")
 		expect(values["cpu"] and values["memory_total_bytes"], "DOS reported no CPU or memory")
 		expect(values["target"] == "dos-i386", f"--json target {values['target']!r}")
-	expect(values["resources"] is None, "a Windows 3.1 fact on Unix")
+	if WIN16:
+		expect(values["resources"] and values["display"] and values["target"] == "win16-i386", "Windows 3.1 reported too little")
+		expect(values["desktop"] is None and values["terminal"] is None, "Windows 3.1 reported a terminal")
+	else:
+		expect(values["resources"] is None, "a Windows 3.1 fact on Unix")
 
 	version = run(command + ["--version"])
 	expect(version.returncode == 0 and version.stdout.startswith(b"afterfetch "), "--version")
@@ -171,9 +185,13 @@ def check_plain(command, labels_path, golden_path=None):
 	expect(run(command + ["--help"]).returncode == 0, "--help")
 	bad = run(command + ["--no-such-option"])
 	# DOS has no way to capture standard error under the harness, so there only the exit code and the empty standard output are checked.
-	expect(bad.returncode == 2 and bad.stdout == b"" and (bad.stderr or DOS), "a bad option gives exit 2 and a message on stderr")
+	if WIN16:
+		# A Windows 3.1 program has no exit status Wine hands back, and no standard error: the message is in the output file.
+		expect(b"unknown option" in bad.stdout, "a bad option gives a message")
+	else:
+		expect(bad.returncode == 2 and bad.stdout == b"" and (bad.stderr or DOS), "a bad option gives exit 2 and a message on stderr")
 
-	if WINDOWS or DOS:
+	if WINDOWS or DOS or WIN16:
 		# A pipe never gets escape sequences from the Win32 or the DOS program, whatever depth is asked for (the console path is attributes).
 		for depth in ("16", "256", "truecolour", "mono"):
 			asked = run(command + ["--colour", depth])
@@ -225,9 +243,10 @@ def check_colour(capture_path, depth):
 def main(argv):
 	try:
 		if len(argv) >= 4 and argv[1] == "plain":
-			global WINDOWS, DOS
+			global WINDOWS, DOS, WIN16
 			WINDOWS = "--windows" in argv
 			DOS = "--dos" in argv
+			WIN16 = "--win16" in argv
 			golden = argv[argv.index("--golden") + 1] if "--golden" in argv else None
 			command = argv[2:3]
 			if "--runner" in argv:
