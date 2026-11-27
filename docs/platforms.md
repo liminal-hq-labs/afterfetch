@@ -17,8 +17,8 @@ Tier is Rust's support tier. Tier 3 and the custom targets have no prebuilt `cor
 | `linux-armv6` | `arm-unknown-linux-musleabihf` | 2 | prebuilt | as above, Thumb code | `qemu-arm-static`, as an ARM1176 | Real kernel and hardware; ARMv5 soft-float boards are not a target |
 | `linux-mips`, `linux-mipsel` | `mips-unknown-linux-musl`, `mipsel-unknown-linux-musl` | 3 | build-std | as above, `asm_experimental_arch` | `qemu-mips-static`, `qemu-mipsel-static`, as a 24Kc | Real kernel and hardware; size budget 44 KiB (AF-D22) |
 | `linux-mips64el` (optional) | `mips64el-unknown-linux-muslabi64` | 3 | build-std | as above | `qemu-mips64el-static` | Real kernel and hardware |
-| `linux-riscv64` | `riscv64gc-unknown-linux-musl` | 2 | prebuilt | as above | `qemu-riscv64-static` | Real kernel and hardware |
-| `linux-ppc64le` | `powerpc64le-unknown-linux-musl` | 2 | prebuilt | as above, `asm_experimental_arch` | `qemu-ppc64le-static` | Real kernel and hardware |
+| `linux-riscv64` | `riscv64gc-unknown-linux-musl` | 2 | prebuilt | as above | `qemu-riscv64-static`, as `rv64` | Built and run under qemu-user locally; real hardware unverified |
+| `linux-ppc64le` | `powerpc64le-unknown-linux-musl` | 2 | prebuilt | as above (inline assembly is stable on this target; no `asm_experimental_arch`) | `qemu-ppc64le-static`, as a POWER8 | Built and run under qemu-user locally; real hardware unverified; size budget 44 KiB (AF-D54) |
 | `freebsd-x86_64` | `x86_64-unknown-freebsd` | 2 | prebuilt | `rust-lld`, static, no libc, FreeBSD ELF brand | FreeBSD VM under QEMU | Hardware; go/no-go AF-D23 |
 | `freebsd-i686` | `i686-unknown-freebsd` | 2 | prebuilt | as above | Same VM, through `COMPAT_FREEBSD32` | Hardware; a native i386 install |
 | `freebsd-aarch64` | `aarch64-unknown-freebsd` | 3 | build-std | as above | Structure only | Running it (AF-D6) |
@@ -57,7 +57,8 @@ Source `platforms/unix`, the crate `afterfetch-unix` in the root workspace, with
 - **Local test, FreeBSD:** `scripts/freebsd-vm.sh fetch` downloads the official `FreeBSD-<release>-amd64-BASIC-CLOUDINIT-ufs.qcow2.xz` once into `~/.cache/afterfetch/freebsd/` (about 0.6 GB; pinned by name and SHA-256, checked against the release `CHECKSUM.SHA256`; `df -h /home` first; one image only). Not fetched yet. `qemu-system-x86_64 -m 1024 -smp 2` boots it with a snapshot overlay so the base never changes; the binary goes in on a small FAT image made with mtools and runs over the serial console under `scripts/smoke/freebsd-serial.py`, always inside `flock ~/.cache/reactos-liminal/qemu.lock`. The i686 build runs in the same guest.
 - **Verified locally, Arm:** built and run under qemu-user only. Real Raspberry Pi hardware and kernels are unverified.
 - **Verified locally, MIPS:** `mips` (big-endian) and `mipsel` build on the pinned 1.98.0 with `-Zbuild-std=core,compiler_builtins` and `RUSTC_BOOTSTRAP=1`, and run under qemu-user as a 24Kc (MIPS32 release 2, the oldest core the target's baseline allows): plain, `--json`, exit 74 on `/dev/full` and the colour depths through a pseudo-terminal. Real routers, kernels and OpenWrt are unverified; the OpenWrt `cpu model` shape is covered by the core's captured file.
-- **Unverified locally:** real ARM and MIPS kernels and hardware (qemu-user uses the host kernel); FreeBSD ARM64, since there is no `qemu-system-aarch64`. Later options: OpenWrt `malta` under `qemu-system-mipsel`, and `vmactions/freebsd-vm` in CI for x86_64.
+- **Verified locally, RISC-V and PowerPC:** `riscv64` and `ppc64le` build on the pinned 1.98.0 from the prebuilt libraries (no `build-std`, no `RUSTC_BOOTSTRAP`) and run under qemu-user as `rv64` and `power8`: plain shape, `--json`, exit 74 on `/dev/full`, the four colour depths, and byte-identical builds in three directories. RISC-V is 30.0 KB; PowerPC is 42.5 KB (AF-D54).
+- **Unverified locally:** real RISC-V and PowerPC kernels and hardware; real ARM and MIPS kernels and hardware (qemu-user uses the host kernel); FreeBSD ARM64, since there is no `qemu-system-aarch64`. Later options: OpenWrt `malta` under `qemu-system-mipsel`, and `vmactions/freebsd-vm` in CI for x86_64.
 
 ## macOS
 

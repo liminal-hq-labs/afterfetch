@@ -1,13 +1,13 @@
 # Afterfetch for Unix
 
-A static program with no C library, built from raw system calls. Linux x86_64, i586, ARM64 (`aarch64`), 32-bit Arm (`armv7`, `armv6`) and MIPS (`mips`, `mipsel`) build today; the layout leaves room for the other architectures, FreeBSD and macOS.
+A static program with no C library, built from raw system calls. Linux x86_64, i586, ARM64 (`aarch64`), 32-bit Arm (`armv7`, `armv6`), MIPS (`mips`, `mipsel`), RISC-V 64 (`riscv64`) and PowerPC 64 little-endian (`ppc64le`) build today; the layout leaves room for the other architectures, FreeBSD and macOS.
 
 ## Build and check
 
 ```sh
 platforms/unix/build.sh x86_64-unknown-linux-musl    # or i586-, aarch64-unknown-linux-musl, armv7- or arm-unknown-linux-musleabihf; add `clippy` to lint instead
 platforms/unix/check.sh x86_64-unknown-linux-musl    # machine, static, no PT_INTERP, no DT_NEEDED, 32 KiB budget, system call list
-bash scripts/smoke/linux-native.sh                   # shape, --json and the colour depths from a pseudo-terminal; the Arm and MIPS builds run under qemu-user
+bash scripts/smoke/linux-native.sh                   # shape, --json and the colour depths from a pseudo-terminal; the Arm, MIPS, RISC-V and PowerPC builds run under qemu-user
 bash scripts/repro-unix.sh                           # two builds in two directories, compared byte for byte
 ```
 
@@ -27,7 +27,7 @@ bash scripts/repro-unix.sh                           # two builds in two directo
 - `rt.rs` and `os/linux.rs` are portable. The structures (`Utsname`, `Sysinfo`) use the kernel's layout with `usize` for `long`; check the 32-bit and big-endian cases.
 - Add the target to `build.sh`'s callers and `check.sh`'s table, and extend `scripts/smoke/` with a runner such as `qemu-aarch64-static`; `shape.py plain <binary> <labels> --runner <emulator>` already takes one.
 - Name the target: `TARGET_ARCH` in `os/linux.rs` gives the SPEC section 2 name (`aarch64`, `armv7`, `mipsel`, `ppc64le`); `--version` and the JSON `target` print it. Fill `facts.arch` with the kernel's own machine name, unmapped, and set the raw numbers with `facts.set_uptime` and `facts.set_memory` so the JSON and the text agree.
-- x86, ARM64, 32-bit Arm and MIPS have been built. `/proc/cpuinfo` is parsed for the ARM, MIPS and RISC-V shapes from captured files in `crates/afterfetch-core/tests/fixtures/linux/cpuinfo`.
+- x86, ARM64, 32-bit Arm, MIPS, RISC-V 64 and PowerPC 64 LE have been built. `/proc/cpuinfo` is parsed for the ARM, MIPS and RISC-V shapes from captured files in `crates/afterfetch-core/tests/fixtures/linux/cpuinfo`.
 
 ## Arm
 
@@ -50,6 +50,23 @@ bash scripts/repro-unix.sh                           # two builds in two directo
 - **Size:** 42,744 bytes each, 32.4 KB of code. That is over the 32 KiB of the other Linux builds, so `check.sh` allows MIPS 44 KiB (AF-D22). MIPS16 does not build (`compiler_builtins` has assembly it cannot encode), microMIPS is absent from the 24K and 74K cores routers use, and the usual flags (`opt-level=s`, no MIR inlining, function alignment) change nothing.
 - **What the smoke proves:** `scripts/smoke/linux-native.sh mips mipsel` runs each binary under `qemu-mips-static` or `qemu-mipsel-static` with `QEMU_CPU=24Kc` (MIPS32 release 2): plain output, `--json`, exit 74 on `/dev/full` and the four colour depths through `script`. A MIPS32 release 1 core (a 4Kc) would fault on the baseline's instructions; the target is `mips32r2`. It does **not** prove the parsers on a router: qemu-user answers `/proc/cpuinfo`, `/proc/meminfo` and `/etc/os-release` from the host, so the rows show the host. The OpenWrt shape is covered by the core's captured file.
 - **Not done:** `mips64` (n64) and `mips64el`; the numbers are offset by 5000 there and `mips64el-unknown-linux-muslabi64` needs its own stub.
+
+## RISC-V 64
+
+- **Table and stub:** the generic table, as ARM64 (`openat` 56, `ioctl` 29, `exit_group` 94, `write` 64), and the ordinary `ioctl` requests (`TCGETS` 0x5401, `TIOCGWINSZ` 0x5413). `ecall` takes the number in a7 and arguments in a0 to a2, and returns in a0 with `-errno`. `_start` passes sp to `rt::start` and aligns it to 16 bytes.
+- **Build:** `riscv64gc-unknown-linux-musl` has a prebuilt library and stable `asm!`, so there is no `build-std` and no `RUSTC_BOOTSTRAP`. The code is G+C (RV64GC). `link.ld` already drops `.comment`; `.riscv.attributes` stays (116 bytes).
+- **Size:** 30.0 KB, inside 32 KiB.
+- **Smoke:** `scripts/smoke/linux-native.sh riscv64` under `qemu-riscv64-static` with `QEMU_CPU=rv64`. As elsewhere, qemu-user answers `/proc/cpuinfo` itself, so the CPU row shows what it emulates.
+
+## PowerPC 64 little-endian
+
+- **Table:** the PowerPC table (shared with 32-bit PowerPC): `read` 3, `write` 4, `close` 6, `getuid` 24, `ioctl` 54, `sysinfo` 116, `uname` 122, `exit_group` 234, `openat` 286; checked against the `libc` crate's `powerpc64` tables. `TCGETS` is 0x402C7413 (the kernel's 44-byte `termios`; the 0x403C7413 in the `libc` crate's glibc branch is glibc's own layout) and `TIOCGWINSZ` is 0x40087468.
+- **Calling convention:** `sc`, number in r0, arguments in r3 to r5. The kernel sets CR0.SO on failure with the positive errno in r3, so `syscall3` negates r3 on `bns`. It declares r0, r4 to r12, CTR and CR0 as clobbered.
+- **Entry (ELFv2):** the kernel starts the program with r1 pointing at `argc`. The stub passes r1 on in r3, rounds the stack down to 16 bytes and opens a 32-byte frame with a zero back chain. ELFv2 has no function descriptors, and the callee's global entry computes its TOC pointer (r2) from r12, so the stub loads `rt::start`'s absolute address into r12 (`lis`, `addi`) and calls through CTR. The ELF header's `e_flags` is 2 (ELFv2), which `check.sh` verifies.
+- **Build:** a prebuilt library, and `asm!` is stable here, so `asm_experimental_arch` is not needed. `link.ld` now also places `.data.rel.ro*` in the read-only segment: PowerPC (unlike the other targets) emits the logo and key tables there, and without this they landed in a writable segment and cost a 4 KB page of padding.
+- **CPU row:** `/proc/cpuinfo` on PowerPC names the processor in `cpu` (`POWER9 (architected), altivec supported`); the core takes the name up to the comma.
+- **Size:** 42.5 KB, over the 32 KiB of the other 64-bit builds (AF-D54).
+- **Smoke:** `scripts/smoke/linux-native.sh ppc64le` under `qemu-ppc64le-static` with `QEMU_CPU=power8`. Real PowerPC hardware is unverified.
 
 ## Notes for FreeBSD
 
