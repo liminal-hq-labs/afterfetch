@@ -47,6 +47,7 @@ target/x86_64-unknown-linux-musl/release/afterfetch
 - [SPEC.md](SPEC.md) — behaviour and interfaces
 - [docs/decisions.md](docs/decisions.md) — decisions and why
 - [docs/platforms.md](docs/platforms.md) — how each target is built and tested
+- [docs/preview.md](docs/preview.md) — see what afterfetch looks like on every system without running it there
 - [docs/art.md](docs/art.md) and [docs/logo-format.md](docs/logo-format.md) — the logos and their blob format
 - [docs/landing.md](docs/landing.md) — how work lands without a remote
 - [AGENTS.md](AGENTS.md) — contributor and agent rules

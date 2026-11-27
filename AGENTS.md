@@ -69,7 +69,7 @@ Afterfetch is a [Liminal HQ Labs](https://github.com/liminal-hq-labs) experiment
 
 [`docs/landing.md`](docs/landing.md) is canonical. In short:
 
-- **One builder per area at a time.** Areas: `core` (`crates/afterfetch-core`), `art` (`art/`, `crates/afterfetch-art`), `unix`, `win32`, `dos`, `win16` and `repo` (root files, Makefile, scripts, docs). Two work packages touching one area never run together.
+- **One builder per area at a time.** Areas: `core` (`crates/afterfetch-core`), `art` (`art/`, `crates/afterfetch-art`), `unix`, `win32`, `dos`, `win16` and `repo` (root files, Makefile, scripts, docs, and the host-only `crates/afterfetch-preview`). Two work packages touching one area never run together.
 - **Straight onto `main`**, with `make check` passing before every commit. One active builder works in the main checkout. Two or three at once each use a worktree at `~/source/worktrees/afterfetch/<wp-id>` on `wp/<wp-id>`, then `git rebase main` and `git merge --ff-only`, and remove the worktree and branch.
 - Sign each commit with the agent's own model in `Co-Authored-By`.
 
@@ -130,7 +130,7 @@ State exactly what was and was not run when reporting results.
 ```text
 README.md SPEC.md AGENTS.md CLAUDE.md LICENSE-APACHE LICENSE-MIT
 .editorconfig .markdownlint.jsonc .gitignore rustfmt.toml rust-toolchain.toml deny.toml Makefile Cargo.toml
-crates/        afterfetch-core (portable core) and afterfetch-art (generated logos and palette)
+crates/        afterfetch-core (portable core), afterfetch-art (generated logos and palette) and afterfetch-preview (host-only previews, never shipped)
 art/           vector masters, ASCII forms, the palette, the logo manifest and the generator
 platforms/     platform shells: unix (Linux today), win32 in progress
 tests/         smoke label lists

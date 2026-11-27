@@ -8,6 +8,7 @@ Nothing is released. Every part may change between commits. A part marked **plan
 
 - **Core** (`afterfetch-core`: arguments, colour depth, facts, layout, JSON): in progress; the command line, facts, layout, depth and JSON below are implemented and host-tested, including exit code 74, JSON schema 1 and the architecture accent. The logo decoder reads the generated blobs and draws them in every form at every depth, host-tested with goldens for every logo.
 - **Art** (`afterfetch-art`, the eight logos): all eight masters and ASCII forms are drawn and their blobs generated (2,026 bytes together, §7). The core decodes them (AF-D46). `umber` and `soot`, used only by `desk`, are provisional until the owner reviews that logo (AF-D42).
+- **Preview** (`afterfetch-preview`, host only, AF-D50): draws the real core's output for any system from sample facts, as text, ANSI, PNG or HTML, and writes the contact sheet of the eight logos. See [docs/preview.md](docs/preview.md).
 - **Platforms**: Linux x86_64 and i586 build and pass their local checks (§13); the Win32 port is in progress; every other target is not started. The order and the go/no-go checkpoints are in §13.
 
 ## 1 · Purpose and scope

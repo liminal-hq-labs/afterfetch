@@ -81,7 +81,7 @@ smoke-wine: build-win32
 repro-win32:
 	bash scripts/repro-win32.sh
 
-# Preview (AF-D49): what afterfetch looks like on any supported system, from sample facts. Host only; never part of a size gate or a
+# Preview (AF-D50): what afterfetch looks like on any supported system, from sample facts. Host only; never part of a size gate or a
 # release. `make preview SYSTEM=macos COLOUR=256 WIDTH=100` prints one system; `make sheet` writes the contact sheet of the eight logos.
 SYSTEM ?= linux
 COLOUR ?= truecolour
