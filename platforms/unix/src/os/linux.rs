@@ -390,7 +390,7 @@ const TARGET_ARCH: &str = if cfg!(target_arch = "x86_64") {
 } else if cfg!(target_arch = "aarch64") {
 	"aarch64"
 } else if cfg!(target_arch = "arm") {
-	if cfg!(target_feature = "v7") { "armv7" } else { "armv6" }
+	if cfg!(arm_v7) { "armv7" } else { "armv6" }
 } else if cfg!(target_arch = "mips") {
 	if cfg!(target_endian = "little") { "mipsel" } else { "mips" }
 } else if cfg!(target_arch = "mips64") {

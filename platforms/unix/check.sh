@@ -15,6 +15,8 @@ budget=32768
 
 case "$target" in
 x86_64-unknown-linux-musl) class="ELF64" machine="Advanced Micro Devices X86-64" ;;
+aarch64-unknown-linux-musl) class="ELF64" machine="AArch64" ;;
+armv7-unknown-linux-musleabihf | arm-unknown-linux-musleabihf) class="ELF32" machine="ARM" ;;
 i586-unknown-linux-musl) class="ELF32" machine="Intel 80386" ;;
 *) echo "check.sh: no expectations for $target" >&2; exit 2 ;;
 esac

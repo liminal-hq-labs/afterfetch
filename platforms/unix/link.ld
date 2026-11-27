@@ -11,5 +11,5 @@ SECTIONS
 	. = ALIGN(0x1000) + (. & 0xfff);
 	.data : { *(.data .data.*) *(.got .got.plt) }
 	.bss : { *(.bss .bss.*) *(COMMON) }
-	/DISCARD/ : { *(.eh_frame) *(.eh_frame_hdr) *(.comment) *(.note*) }
+	/DISCARD/ : { *(.eh_frame) *(.eh_frame_hdr) *(.ARM.exidx*) *(.ARM.extab*) *(.ARM.attributes) *(.comment) *(.note*) }
 }

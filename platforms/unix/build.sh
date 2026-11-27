@@ -34,6 +34,11 @@ flags=(
 	"--remap-path-prefix=${CARGO_HOME:-$HOME/.cargo}=/cargo"
 )
 
+# 32-bit Arm builds use Thumb code, which is denser than Arm code and keeps the program inside its size budget (AF-D47).
+case "$target" in
+arm-* | armv7-*) flags+=(-C target-feature=+thumb-mode) ;;
+esac
+
 export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-4}"
 export CARGO_ENCODED_RUSTFLAGS
 CARGO_ENCODED_RUSTFLAGS="$(printf '%s\x1f' "${flags[@]}")"
