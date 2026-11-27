@@ -1,0 +1,8 @@
+# A hand-edited file with CRLF line ends and odd quoting.
+
+ID=oddos
+NAME='Odd OS'
+VERSION_ID = "4.2 \"beta\""   # trailing comment
+HOME_URL=https://example.invalid/?a=b=c
+NOT A LINE
+PRETTY_NAME=

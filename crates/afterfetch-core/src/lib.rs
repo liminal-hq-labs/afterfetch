@@ -15,6 +15,7 @@ pub mod json;
 pub mod layout;
 pub mod logo;
 pub mod palette;
+pub mod parse;
 pub mod run;
 pub mod sink;
 
